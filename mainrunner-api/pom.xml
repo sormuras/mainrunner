@@ -10,16 +10,22 @@
     </parent>
     <artifactId>mainrunner-api</artifactId>
 
+    <properties>
+        <jar.file.name>${project.artifactId}-${project.version}.jar</jar.file.name>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>de.sormuras</groupId>
             <artifactId>mainrunner-api-base-8</artifactId>
             <version>${project.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>de.sormuras</groupId>
             <artifactId>mainrunner-api-java-11</artifactId>
             <version>${project.version}</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
@@ -29,7 +35,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <configuration>
-                    <skip>true</skip>
+                    <skipIfEmpty>true</skipIfEmpty>
                 </configuration>
             </plugin>
             <plugin>
@@ -49,7 +55,7 @@
                                 <argument>--verbose</argument>
                                 <argument>--create</argument>
                                 <argument>--file</argument>
-                                <argument>target/${project.artifactId}-${project.version}.jar</argument>
+                                <argument>target/${jar.file.name}</argument>
                                 <argument>-C</argument>
                                 <argument>../mainrunner-api-base-8/target/classes</argument>
                                 <argument>.</argument>
@@ -63,7 +69,7 @@
                     </execution>
                     <execution>
                         <id>describe</id>
-                        <phase>package</phase>
+                        <phase>verify</phase>
                         <goals>
                             <goal>exec</goal>
                         </goals>
@@ -72,7 +78,7 @@
                             <arguments>
                                 <argument>--describe-module</argument>
                                 <argument>--file</argument>
-                                <argument>target/${project.artifactId}-${project.version}.jar</argument>
+                                <argument>target/${jar.file.name}</argument>
                                 <argument>--release</argument>
                                 <argument>11</argument>
                             </arguments>
