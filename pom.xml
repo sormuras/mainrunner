@@ -22,6 +22,8 @@
         <module>mainrunner-api-base-8</module>
         <module>mainrunner-api-java-11</module>
         <module>mainrunner-api</module>
+
+        <module>mainrunner-engine-base-8</module>
     </modules>
 
     <dependencies>
