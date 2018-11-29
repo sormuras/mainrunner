@@ -32,19 +32,12 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <configuration>
-                    <skipIfEmpty>true</skipIfEmpty>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.6.0</version>
                 <executions>
                     <execution>
-                        <id>create</id>
+                        <id>jar --update --release 11</id>
                         <phase>package</phase>
                         <goals>
                             <goal>exec</goal>
@@ -53,7 +46,7 @@
                             <executable>jar</executable>
                             <arguments>
                                 <argument>--verbose</argument>
-                                <argument>--create</argument>
+                                <argument>--update</argument>
                                 <argument>--file</argument>
                                 <argument>target/${jar.file.name}</argument>
                                 <argument>-C</argument>
@@ -68,7 +61,7 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>describe</id>
+                        <id>jar --describe-module --release 11</id>
                         <phase>verify</phase>
                         <goals>
                             <goal>exec</goal>
