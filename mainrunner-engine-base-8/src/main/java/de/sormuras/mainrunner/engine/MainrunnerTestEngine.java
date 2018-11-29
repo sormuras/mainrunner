@@ -30,7 +30,7 @@ public class MainrunnerTestEngine implements TestEngine {
 
   static String ENGINE_ID = "mainrunner";
 
-  static String ENGINE_DISPLAY_NAME = "Mainrunner";
+  static String ENGINE_DISPLAY_NAME = "Mainrunner (8)";
 
   @Override
   public String getId() {
