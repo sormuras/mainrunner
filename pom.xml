@@ -25,6 +25,7 @@
 
         <module>mainrunner-engine-base-8</module>
         <module>mainrunner-engine-java-11</module>
+        <module>mainrunner-engine</module>
     </modules>
 
     <dependencies>
