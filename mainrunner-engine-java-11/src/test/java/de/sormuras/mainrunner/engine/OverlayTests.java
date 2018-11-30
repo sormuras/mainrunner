@@ -16,17 +16,27 @@
 
 package de.sormuras.mainrunner.engine;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import org.junit.jupiter.api.Test;
 
-class MainToolTests {
+class OverlayTests {
 
   @Test
   void javaExecutableExists() {
-    var java = MainTool.java();
+    var java = OverlaySingleton.INSTANCE.java();
 
     assertTrue(Files.exists(java));
+  }
+
+  @Test
+  void systemPropertyNames() {
+    var names = OverlaySingleton.INSTANCE.systemPropertyNames();
+
+    assertFalse(names.isEmpty());
+    assertEquals(4, names.size(), "names=" + names);
   }
 }

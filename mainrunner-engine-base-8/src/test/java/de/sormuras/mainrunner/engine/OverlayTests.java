@@ -16,14 +16,23 @@
 
 package de.sormuras.mainrunner.engine;
 
-import java.nio.file.Path;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class MainTool {
-  public static String name() {
-    return "Mainrunner (Java 11)";
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.junit.jupiter.api.Test;
+
+class OverlayTests {
+
+  @Test
+  void javaExecutableExists() {
+    Path java = OverlaySingleton.INSTANCE.java();
+
+    assertTrue(Files.exists(java));
   }
 
-  public static Path java() {
-    return ProcessHandle.current().info().command().map(Path::of).orElseThrow();
+  @Test
+  void systemPropertyNamesIsEmpty() {
+    assertTrue(OverlaySingleton.INSTANCE.systemPropertyNames().isEmpty());
   }
 }

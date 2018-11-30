@@ -16,18 +16,14 @@
 
 package de.sormuras.mainrunner.engine;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.nio.file.Files;
 import java.nio.file.Path;
-import org.junit.jupiter.api.Test;
+import java.util.Set;
 
-class MainToolTests {
+interface Overlay {
 
-  @Test
-  void javaExecutableExists() {
-    Path java = MainTool.java();
+  String display();
 
-    assertTrue(Files.exists(java));
-  }
+  Path java();
+
+  Set<String> systemPropertyNames();
 }

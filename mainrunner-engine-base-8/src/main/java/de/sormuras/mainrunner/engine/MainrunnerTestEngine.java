@@ -53,7 +53,7 @@ public class MainrunnerTestEngine implements TestEngine {
 
   @Override
   public TestDescriptor discover(EngineDiscoveryRequest discoveryRequest, UniqueId uniqueId) {
-    EngineDescriptor engine = new EngineDescriptor(uniqueId, MainTool.name());
+    EngineDescriptor engine = new EngineDescriptor(uniqueId, OverlaySingleton.INSTANCE.display());
 
     ClassFilter classFilter = ClassFilter.of(buildClassNamePredicate(discoveryRequest), c -> true);
 
@@ -148,12 +148,8 @@ public class MainrunnerTestEngine implements TestEngine {
     return TestExecutionResult.successful();
   }
 
-  // https://docs.oracle.com/javase/10/tools/java.htm
-  // java [options] mainclass [args...]
-  // java [options] -jar jarfile [args...]
-  // java [options] [--module-path modulepath] --module module[/mainclass] [args...]
   private TestExecutionResult executeForked(MainMethod mainMethod) {
-    String java = MainTool.java().normalize().toAbsolutePath().toString();
+    String java = OverlaySingleton.INSTANCE.java().normalize().toAbsolutePath().toString();
     ProcessBuilder builder = new ProcessBuilder(java);
     List<String> command = builder.command();
     Arrays.stream(mainMethod.getOptions())
@@ -178,12 +174,34 @@ public class MainrunnerTestEngine implements TestEngine {
 
   // https://docs.oracle.com/javase/8/docs/api/java/lang/System.html#getProperties--
   private static String replaceSystemProperties(String string) {
-    string = replaceSystemProperty(string, "java.class.path");
-    string = replaceSystemProperty(string, "jdk.module.path");
+    string = replaceSystemProperty(string, "java.version"); // Java version number
+    string = replaceSystemProperty(string, "java.version.date"); // Java version date
+    string = replaceSystemProperty(string, "java.vendor"); // Java vendor specific string
+    string = replaceSystemProperty(string, "java.vendor.url"); // Java vendor URL
+    string = replaceSystemProperty(string, "java.vendor.version"); // Java vendor version
+    string = replaceSystemProperty(string, "java.home"); // Java installation directory
+    string = replaceSystemProperty(string, "java.class.version"); // Java class version number
+    string = replaceSystemProperty(string, "java.class.path"); // Java classpath
+    string = replaceSystemProperty(string, "os.name"); // Operating System Name
+    string = replaceSystemProperty(string, "os.arch"); // Operating System Architecture
+    string = replaceSystemProperty(string, "os.version"); // Operating System Version
+    string = replaceSystemProperty(string, "file.separator"); // File separator ("/" on Unix)
+    string = replaceSystemProperty(string, "path.separator"); // Path separator (":" on Unix)
+    string = replaceSystemProperty(string, "line.separator"); // Line separator ("\n" on Unix)
+    string = replaceSystemProperty(string, "user.name"); // User account name
+    string = replaceSystemProperty(string, "user.home"); // User home directory
+    string = replaceSystemProperty(string, "user.dir"); // User's current working directory
+    // replace "future" system properties
+    for (String property : OverlaySingleton.INSTANCE.systemPropertyNames()) {
+      string = replaceSystemProperty(string, property);
+    }
     return string;
   }
 
   private static String replaceSystemProperty(String string, String key) {
+    if (string.indexOf('$') == -1) {
+      return string;
+    }
     String replacement = System.getProperty(key);
     if (replacement == null) {
       return string;

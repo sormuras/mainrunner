@@ -18,14 +18,25 @@ package de.sormuras.mainrunner.engine;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.Set;
 
-class MainTool {
-  public static String name() {
-    return "Mainrunner (Java 8)";
-  }
+enum OverlaySingleton implements Overlay {
+  INSTANCE {
+    @Override
+    public String display() {
+      return "Mainrunner (Java 8)";
+    }
 
-  public static Path java() {
-    String extension = System.getProperty("os.name").toLowerCase().contains("win") ? ".exe" : "";
-    return Paths.get(System.getProperty("java.home"), "bin", "java" + extension);
+    @Override
+    public Path java() {
+      String extension = System.getProperty("os.name").toLowerCase().contains("win") ? ".exe" : "";
+      return Paths.get(System.getProperty("java.home"), "bin", "java" + extension);
+    }
+
+    @Override
+    public Set<String> systemPropertyNames() {
+      return Collections.emptySet();
+    }
   }
 }
