@@ -1,2 +1,3 @@
-# mainrunner-engine
-Main Runner JUnit Platform Test Engine
+![mainrunner](mainrunner.png)
+
+JUnit Platform Test Engine launching Java programs
