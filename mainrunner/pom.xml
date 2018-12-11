@@ -4,21 +4,21 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>de.sormuras</groupId>
-        <artifactId>mainrunner-parent</artifactId>
+        <groupId>de.sormuras.mainrunner</groupId>
+        <artifactId>mainrunner-root</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
     <artifactId>mainrunner</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>de.sormuras</groupId>
+            <groupId>de.sormuras.mainrunner</groupId>
             <artifactId>mainrunner-api</artifactId>
             <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>de.sormuras</groupId>
+            <groupId>de.sormuras.mainrunner</groupId>
             <artifactId>mainrunner-engine</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
