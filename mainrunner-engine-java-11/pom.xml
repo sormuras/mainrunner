@@ -58,13 +58,6 @@
                 <groupId>com.coveo</groupId>
                 <artifactId>fmt-maven-plugin</artifactId>
             </plugin>
-            <plugin>
-                <groupId>de.sormuras</groupId>
-                <artifactId>junit-platform-maven-plugin</artifactId>
-                <configuration>
-                    <isolate>false</isolate>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
