@@ -215,10 +215,11 @@
         1. . clean
         2. mvn versions:set -DnewVersion=X.Y.Z -DprocessAllModules -DgenerateBackupPoms=false
         3. . clean format verify
+        4. -
         5. Commit and tag "X.Y.Z"
         6. . deploy
         7. Push with all tags
-        8. Revert 2. or Replace in Path "X.Y.Z" with "next-SNAPSHOT" (6x pom.xml, 3x *.java)
+        8. Revert 2. or Replace in Path "X.Y.Z" with "next-SNAPSHOT"
         9. Commit and Push
         -
         10. Sync to Maven Central https://bintray.com/sormuras/maven/mainrunner/ X.Y.Z
