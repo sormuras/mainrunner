@@ -114,6 +114,53 @@
                 <version>1.0.0-M4</version>
                 <extensions>true</extensions>
             </plugin>
+            <!-- Jar -->
+            <plugin>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <!-- Javadoc -->
+            <plugin>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>javadoc</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <force>true</force>
+                    <failOnError>false</failOnError>
+                    <detectOfflineLinks>false</detectOfflineLinks>
+                    <quiet>true</quiet>
+                    <doclint>none</doclint>
+                    <additionalOptions>
+                        <additionalOption>-html5</additionalOption>
+                    </additionalOptions>
+                </configuration>
+            </plugin>
+            <!-- Source -->
+            <plugin>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
