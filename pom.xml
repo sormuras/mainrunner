@@ -164,29 +164,6 @@
         </plugins>
     </build>
 
-    <profiles>
-        <profile>
-            <id>run-fmt</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.coveo</groupId>
-                        <artifactId>fmt-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>format</id>
-                                <phase>validate</phase>
-                                <goals>
-                                    <goal>format</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-
     <developers>
         <developer>
             <name>Christian Stein</name>
