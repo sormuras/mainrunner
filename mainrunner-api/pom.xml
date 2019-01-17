@@ -17,13 +17,13 @@
     <dependencies>
         <dependency>
             <groupId>de.sormuras.mainrunner</groupId>
-            <artifactId>mainrunner-api-base-8</artifactId>
+            <artifactId>${project.artifactId}-base-8</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>de.sormuras.mainrunner</groupId>
-            <artifactId>mainrunner-api-java-11</artifactId>
+            <artifactId>${project.artifactId}-java-11</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -31,6 +31,24 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>com.coderplus.maven.plugins</groupId>
+                <artifactId>copy-rename-maven-plugin</artifactId>
+                <version>1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy javadoc.jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <sourceFile>../${project.artifactId}-base-8/target/${project.artifactId}-base-8-${project.version}-javadoc.jar</sourceFile>
+                            <destinationFile>${project.build.directory}/${project.artifactId}-${project.version}-javadoc.jar</destinationFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -50,12 +68,36 @@
                                 <argument>--file</argument>
                                 <argument>target/${jar.file.name}</argument>
                                 <argument>-C</argument>
-                                <argument>../mainrunner-api-base-8/target/classes</argument>
+                                <argument>../${project.artifactId}-base-8/target/classes</argument>
                                 <argument>.</argument>
                                 <argument>--release</argument>
                                 <argument>11</argument>
                                 <argument>-C</argument>
-                                <argument>../mainrunner-api-java-11/target/classes</argument>
+                                <argument>../${project.artifactId}-java-11/target/classes</argument>
+                                <argument>.</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>jar sources</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>jar</executable>
+                            <arguments>
+                                <argument>--verbose</argument>
+                                <argument>--create</argument>
+                                <argument>--file</argument>
+                                <argument>target/${project.artifactId}-${project.version}-sources.jar</argument>
+                                <argument>-C</argument>
+                                <argument>../${project.artifactId}-base-8/src/main/java</argument>
+                                <argument>.</argument>
+                                <argument>--release</argument>
+                                <argument>11</argument>
+                                <argument>-C</argument>
+                                <argument>../${project.artifactId}-java-11/src/main/java</argument>
                                 <argument>.</argument>
                             </arguments>
                         </configuration>
@@ -75,6 +117,34 @@
                                 <argument>--release</argument>
                                 <argument>11</argument>
                             </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <id>attach artifacts for deploy</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>attach-artifact</goal>
+                        </goals>
+                        <configuration>
+                            <artifacts>
+                                <artifact>
+                                    <file>${project.build.directory}/${project.artifactId}-${project.version}-javadoc.jar</file>
+                                    <type>jar</type>
+                                    <classifier>javadoc</classifier>
+                                </artifact>
+                                <artifact>
+                                    <file>${project.build.directory}/${project.artifactId}-${project.version}-sources.jar</file>
+                                    <type>jar</type>
+                                    <classifier>sources</classifier>
+                                </artifact>
+                            </artifacts>
                         </configuration>
                     </execution>
                 </executions>
