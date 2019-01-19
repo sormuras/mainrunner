@@ -16,6 +16,8 @@
 
 package de.sormuras.mainrunner.engine;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 
@@ -43,6 +45,16 @@ enum OverlaySingleton implements Overlay {
     @Override
     public Set<String> systemPropertyNames() {
       return systemPropertyNames;
+    }
+
+    @Override
+    public boolean isSingleFileSourceCodeProgramExecutionSupported() {
+      return true;
+    }
+
+    @Override
+    public String readString(Path path) throws IOException {
+      return Files.readString(path);
     }
   }
 }

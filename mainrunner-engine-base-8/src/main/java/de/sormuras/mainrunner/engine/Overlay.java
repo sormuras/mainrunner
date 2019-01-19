@@ -16,6 +16,7 @@
 
 package de.sormuras.mainrunner.engine;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Set;
 
@@ -26,4 +27,8 @@ interface Overlay {
   Path java();
 
   Set<String> systemPropertyNames();
+
+  boolean isSingleFileSourceCodeProgramExecutionSupported();
+
+  String readString(Path path) throws IOException;
 }
