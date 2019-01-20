@@ -26,10 +26,20 @@ import static org.junit.platform.engine.support.filter.ClasspathScanningSupport.
 
 import de.sormuras.mainrunner.api.Main;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.junit.platform.commons.util.ClassFilter;
 import org.junit.platform.engine.EngineDiscoveryRequest;
 import org.junit.platform.engine.EngineExecutionListener;
@@ -41,10 +51,13 @@ import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.discovery.ClassSelector;
 import org.junit.platform.engine.discovery.ClasspathRootSelector;
 import org.junit.platform.engine.discovery.PackageSelector;
+import org.junit.platform.engine.discovery.UriSelector;
 import org.junit.platform.engine.support.descriptor.EngineDescriptor;
 
 /** Main-invoking TestEngine implementation. */
 public class MainrunnerTestEngine implements TestEngine {
+
+  private static Overlay OVERLAY = OverlaySingleton.INSTANCE;
 
   @Override
   public String getId() {
@@ -53,15 +66,17 @@ public class MainrunnerTestEngine implements TestEngine {
 
   @Override
   public TestDescriptor discover(EngineDiscoveryRequest discoveryRequest, UniqueId uniqueId) {
-    EngineDescriptor engine = new EngineDescriptor(uniqueId, OverlaySingleton.INSTANCE.display());
+    EngineDescriptor engine = new EngineDescriptor(uniqueId, OVERLAY.display());
 
     ClassFilter classFilter = ClassFilter.of(buildClassNamePredicate(discoveryRequest), c -> true);
+    Set<URI> uris = new HashSet<>();
 
     // class-path root
     discoveryRequest
         .getSelectorsByType(ClasspathRootSelector.class)
         .stream()
         .map(ClasspathRootSelector::getClasspathRoot)
+        .peek(candidate -> handleCandidate(engine, uris, candidate))
         .map(uri -> findAllClassesInClasspathRoot(uri, classFilter))
         .flatMap(Collection::stream)
         .forEach(candidate -> handleCandidate(engine, candidate));
@@ -82,6 +97,15 @@ public class MainrunnerTestEngine implements TestEngine {
         .map(ClassSelector::getJavaClass)
         .filter(classFilter)
         .forEach(candidate -> handleCandidate(engine, candidate));
+
+    // uri
+    if (OVERLAY.isSingleFileSourceCodeProgramExecutionSupported()) {
+      discoveryRequest
+          .getSelectorsByType(UriSelector.class)
+          .stream()
+          .map(UriSelector::getUri)
+          .forEach(candidate -> handleCandidate(engine, uris, candidate));
+    }
 
     return engine;
   }
@@ -116,28 +140,69 @@ public class MainrunnerTestEngine implements TestEngine {
     }
   }
 
+  private void handleCandidate(EngineDescriptor engine, Set<URI> uris, URI candidate) {
+    if (!OVERLAY.isSingleFileSourceCodeProgramExecutionSupported()) {
+      return;
+    }
+    if (uris.contains(candidate)) {
+      return;
+    }
+    uris.add(candidate);
+    Path path = Paths.get(candidate);
+    if (Files.isDirectory(path)) {
+      try {
+        Files.find(path, 1, MainProgram::isSingleFileSourceCodeProgram)
+            .map(Path::normalize)
+            .map(Path::toAbsolutePath)
+            .forEach(p -> handleCandidate(engine, p));
+      } catch (IOException e) {
+        throw new UncheckedIOException("scan directory failed: " + path, e);
+      }
+      return;
+    }
+    handleCandidate(engine, path);
+  }
+
+  private void handleCandidate(EngineDescriptor engine, Path program) {
+    UniqueId idProgram = engine.getUniqueId().append("main-java", "java-" + program);
+    MainProgram mainProgram = new MainProgram(idProgram, program);
+    engine.addChild(mainProgram);
+
+    UniqueId idTest = mainProgram.getUniqueId().append("main", "main0");
+    mainProgram.addChild(new MainRun(idTest, program));
+  }
+
   @Override
   public void execute(ExecutionRequest request) {
     TestDescriptor engine = request.getRootTestDescriptor();
     EngineExecutionListener listener = request.getEngineExecutionListener();
     listener.executionStarted(engine);
-    for (TestDescriptor mainClass : engine.getChildren()) {
-      listener.executionStarted(mainClass);
-      for (TestDescriptor mainMethod : mainClass.getChildren()) {
-        listener.executionStarted(mainMethod);
-        TestExecutionResult result = executeMainMethod(((MainMethod) mainMethod));
-        listener.executionFinished(mainMethod, result);
+    for (TestDescriptor child : engine.getChildren()) {
+      listener.executionStarted(child);
+      if (child instanceof MainClass) {
+        for (TestDescriptor mainMethod : child.getChildren()) {
+          listener.executionStarted(mainMethod);
+          TestExecutionResult result = executeMainMethod(((MainMethod) mainMethod));
+          listener.executionFinished(mainMethod, result);
+        }
       }
-      listener.executionFinished(mainClass, TestExecutionResult.successful());
+      if (child instanceof MainProgram) {
+        for (TestDescriptor mainRun : child.getChildren()) {
+          listener.executionStarted(mainRun);
+          TestExecutionResult result = executeMainRun(((MainRun) mainRun));
+          listener.executionFinished(mainRun, result);
+        }
+      }
+      listener.executionFinished(child, TestExecutionResult.successful());
     }
     listener.executionFinished(engine, TestExecutionResult.successful());
   }
 
-  private TestExecutionResult executeMainMethod(MainMethod mainMethod) {
+  private static TestExecutionResult executeMainMethod(MainMethod mainMethod) {
     return mainMethod.isFork() ? executeForked(mainMethod) : executeDirect(mainMethod);
   }
 
-  private TestExecutionResult executeDirect(MainMethod mainMethod) {
+  private static TestExecutionResult executeDirect(MainMethod mainMethod) {
     try {
       Method method = mainMethod.getMethod();
       Object[] arguments = new Object[] {mainMethod.getArguments()};
@@ -148,28 +213,19 @@ public class MainrunnerTestEngine implements TestEngine {
     return TestExecutionResult.successful();
   }
 
-  private TestExecutionResult executeForked(MainMethod mainMethod) {
-    String java = OverlaySingleton.INSTANCE.java().normalize().toAbsolutePath().toString();
-    ProcessBuilder builder = new ProcessBuilder(java);
-    List<String> command = builder.command();
+  private static TestExecutionResult executeForked(MainMethod mainMethod) {
+    List<String> arguments = new ArrayList<>();
     Arrays.stream(mainMethod.getOptions())
         .map(MainrunnerTestEngine::replaceSystemProperties)
-        .forEach(command::add);
-    command.add(mainMethod.getMethod().getDeclaringClass().getName());
-    command.addAll(Arrays.asList(mainMethod.getArguments()));
-    builder.inheritIO();
-    try {
-      Process process = builder.start();
-      int actual = process.waitFor();
-      int expected = mainMethod.getExpectedExitValue();
-      if (actual != expected) {
-        String message = "expected exit value " + expected + ", but got: " + actual;
-        return TestExecutionResult.failed(new IllegalStateException(message));
-      }
-    } catch (IOException | InterruptedException e) {
-      return TestExecutionResult.failed(e);
-    }
-    return TestExecutionResult.successful();
+        .forEach(arguments::add);
+    arguments.add(mainMethod.getMethod().getDeclaringClass().getName());
+    arguments.addAll(Arrays.asList(mainMethod.getArguments()));
+    return start(null, arguments, mainMethod.getExpectedExitValue());
+  }
+
+  private static TestExecutionResult executeMainRun(MainRun mainTest) {
+    Path path = mainTest.getPath();
+    return start(path.getParent(), Collections.singletonList(path.toString()), 0);
   }
 
   // https://docs.oracle.com/javase/8/docs/api/java/lang/System.html#getProperties--
@@ -192,7 +248,7 @@ public class MainrunnerTestEngine implements TestEngine {
     string = replaceSystemProperty(string, "user.home"); // User home directory
     string = replaceSystemProperty(string, "user.dir"); // User's current working directory
     // replace "future" system properties
-    for (String property : OverlaySingleton.INSTANCE.systemPropertyNames()) {
+    for (String property : OVERLAY.systemPropertyNames()) {
       string = replaceSystemProperty(string, property);
     }
     return string;
@@ -207,5 +263,47 @@ public class MainrunnerTestEngine implements TestEngine {
       return string;
     }
     return string.replace("${" + key + "}", replacement);
+  }
+
+  private static TestExecutionResult start(Path directory, List<String> arguments, int expected) {
+    String java = OVERLAY.java().normalize().toAbsolutePath().toString();
+    ProcessBuilder builder = new ProcessBuilder(java);
+    builder.inheritIO();
+    builder.command().addAll(arguments);
+    if (directory != null) {
+      builder.directory(directory.toFile());
+    }
+    try {
+      Process process = builder.start();
+      try {
+        if (!process.waitFor(3, TimeUnit.MINUTES)) {
+          // timedOut = true;
+          process.destroy();
+          // give process a second to terminate normally
+          for (int i = 10; i > 0 && process.isAlive(); i--) {
+            Thread.sleep(123);
+          }
+          // if the process is still alive, kill it
+          if (process.isAlive()) {
+            process.destroyForcibly();
+            for (int i = 10; i > 0 && process.isAlive(); i--) {
+              Thread.sleep(1234);
+            }
+          }
+        }
+        if (process.isAlive()) {
+          throw new RuntimeException("process is still alive: " + process);
+        }
+        if (process.exitValue() != expected) {
+          String message = "expected exit value " + expected + ", but got: " + process.exitValue();
+          return TestExecutionResult.failed(new IllegalStateException(message));
+        }
+      } catch (InterruptedException e) {
+        throw new RuntimeException("run failed", e);
+      }
+    } catch (IOException e) {
+      return TestExecutionResult.failed(e);
+    }
+    return TestExecutionResult.successful();
   }
 }
