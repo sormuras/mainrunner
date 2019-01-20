@@ -6,7 +6,7 @@
 
     <groupId>de.sormuras.mainrunner</groupId>
     <artifactId>mainrunner-root</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.1.0</version>
     <packaging>pom</packaging>
 
     <name>mainrunner</name>
@@ -172,7 +172,7 @@
     <!--
     TODO Automate parts of release steps
         1. . clean
-        2. mvn versions:set -DnewVersion=X.Y.Z -DprocessAllModules -DgenerateBackupPoms=false
+        2. mvn versions:set -DprocessAllModules -DgenerateBackupPoms=false -DnewVersion=X.Y.Z
         3. . clean format verify
         4. -
         5. Commit and tag "X.Y.Z"
