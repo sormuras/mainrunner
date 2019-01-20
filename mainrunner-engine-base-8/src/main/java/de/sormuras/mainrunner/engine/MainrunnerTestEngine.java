@@ -36,9 +36,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.junit.platform.commons.util.ClassFilter;
 import org.junit.platform.engine.EngineDiscoveryRequest;
@@ -69,14 +67,13 @@ public class MainrunnerTestEngine implements TestEngine {
     EngineDescriptor engine = new EngineDescriptor(uniqueId, OVERLAY.display());
 
     ClassFilter classFilter = ClassFilter.of(buildClassNamePredicate(discoveryRequest), c -> true);
-    Set<URI> uris = new HashSet<>();
 
     // class-path root
     discoveryRequest
         .getSelectorsByType(ClasspathRootSelector.class)
         .stream()
         .map(ClasspathRootSelector::getClasspathRoot)
-        .peek(candidate -> handleCandidate(engine, uris, candidate))
+        .peek(candidate -> handleCandidate(engine, candidate))
         .map(uri -> findAllClassesInClasspathRoot(uri, classFilter))
         .flatMap(Collection::stream)
         .forEach(candidate -> handleCandidate(engine, candidate));
@@ -99,13 +96,11 @@ public class MainrunnerTestEngine implements TestEngine {
         .forEach(candidate -> handleCandidate(engine, candidate));
 
     // uri
-    if (OVERLAY.isSingleFileSourceCodeProgramExecutionSupported()) {
-      discoveryRequest
-          .getSelectorsByType(UriSelector.class)
-          .stream()
-          .map(UriSelector::getUri)
-          .forEach(candidate -> handleCandidate(engine, uris, candidate));
-    }
+    discoveryRequest
+        .getSelectorsByType(UriSelector.class)
+        .stream()
+        .map(UriSelector::getUri)
+        .forEach(candidate -> handleCandidate(engine, candidate));
 
     return engine;
   }
@@ -140,14 +135,10 @@ public class MainrunnerTestEngine implements TestEngine {
     }
   }
 
-  private void handleCandidate(EngineDescriptor engine, Set<URI> uris, URI candidate) {
+  private void handleCandidate(EngineDescriptor engine, URI candidate) {
     if (!OVERLAY.isSingleFileSourceCodeProgramExecutionSupported()) {
       return;
     }
-    if (uris.contains(candidate)) {
-      return;
-    }
-    uris.add(candidate);
     Path path = Paths.get(candidate);
     if (Files.isDirectory(path)) {
       try {
