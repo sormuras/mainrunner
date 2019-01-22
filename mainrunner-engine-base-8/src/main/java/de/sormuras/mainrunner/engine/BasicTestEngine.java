@@ -1,35 +1,46 @@
 package de.sormuras.mainrunner.engine;
 
-import static org.junit.platform.commons.util.ReflectionUtils.isPublic;
-import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
-import static org.junit.platform.commons.util.ReflectionUtils.returnsVoid;
+import org.junit.platform.engine.TestExecutionResult;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 
 public class BasicTestEngine extends AbstractClassBasedTestEngine {
 
   @Override
-  public boolean isContainer(Class<?> candidate) {
+  public boolean isTestClass(Class<?> candidate) {
     try {
       Method main = candidate.getDeclaredMethod("main", String[].class);
-      return isTest(main);
+      return isTestMethod(main);
     } catch (NoSuchMethodException e) {
       return false;
     }
   }
 
   @Override
-  public boolean isTest(Method main) {
-    return isPublic(main) && isStatic(main) && returnsVoid(main);
+  public boolean isTestMethod(Method method) {
+    Class<?>[] parameterTypes = {String[].class};
+    int modifiers = method.getModifiers();
+    return Modifier.isPublic(modifiers)
+        && Modifier.isStatic(modifiers)
+        && method.getReturnType().equals(void.class)
+        && method.getName().equals("main")
+        && Arrays.equals(method.getParameterTypes(), parameterTypes);
   }
 
   @Override
-  public void executeMethod(Method method) throws ReflectiveOperationException {
-    method.invoke(null);
+  public TestExecutionResult executeMethod(Method method) {
+    try {
+      method.invoke(null);
+    } catch (ReflectiveOperationException e) {
+      return TestExecutionResult.failed(e);
+    }
+    return TestExecutionResult.successful();
   }
 
   @Override
   public String getId() {
-    return "basic-main-engine";
+    return "basic";
   }
 }
