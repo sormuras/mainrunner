@@ -27,7 +27,7 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.junit.platform</groupId>
+            <groupId>${junit.platform.group}</groupId>
             <artifactId>junit-platform-engine</artifactId>
             <version>${junit.platform.version}</version>
         </dependency>

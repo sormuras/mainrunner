@@ -21,8 +21,10 @@
         <maven.compiler.release>11</maven.compiler.release>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <junit.platform.version>1.4.0-M1</junit.platform.version>
-        <junit.jupiter.version>5.4.0-M1</junit.jupiter.version>
+        <junit.platform.group>com.github.junit-team.junit5</junit.platform.group>
+        <junit.platform.version>158484a786</junit.platform.version>
+        <junit.jupiter.group>com.github.junit-team.junit5</junit.jupiter.group>
+        <junit.jupiter.version>158484a786</junit.jupiter.version>
     </properties>
 
     <modules>
@@ -37,10 +39,17 @@
         <module>mainrunner</module>
     </modules>
 
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <!-- Use Jupiter API for writing tests. -->
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
+            <groupId>${junit.jupiter.group}</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.jupiter.version}</version>
             <scope>test</scope>
