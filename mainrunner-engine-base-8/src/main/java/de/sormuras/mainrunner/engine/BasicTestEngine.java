@@ -1,10 +1,9 @@
 package de.sormuras.mainrunner.engine;
 
-import org.junit.platform.engine.TestExecutionResult;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import org.junit.platform.engine.TestExecutionResult;
 
 public class BasicTestEngine extends AbstractClassBasedTestEngine {
 
