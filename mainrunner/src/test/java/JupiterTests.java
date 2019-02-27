@@ -17,7 +17,7 @@
 import de.sormuras.mainrunner.api.Main;
 import org.junit.jupiter.api.Test;
 
-class IntegrationTests {
+class JupiterTests {
 
   @Test
   void test() {
