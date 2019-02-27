@@ -10,10 +10,6 @@ pool:
   vmImage: 'Ubuntu-16.04'
 
 steps:
-- script: |
-    echo $JAVA_HOME
-    echo $PATH
-  displayName: 'Echo some environment variables'
 - task: Maven@3
   inputs:
     mavenPomFile: 'pom.xml'

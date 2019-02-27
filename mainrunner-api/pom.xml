@@ -61,7 +61,7 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>jar</executable>
+                            <executable>${env.JAVA_HOME}/bin/jar</executable>
                             <arguments>
                                 <argument>--verbose</argument>
                                 <argument>--update</argument>
@@ -85,7 +85,7 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>jar</executable>
+                            <executable>${env.JAVA_HOME}/bin/jar</executable>
                             <arguments>
                                 <argument>--verbose</argument>
                                 <argument>--create</argument>
@@ -109,7 +109,7 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>jar</executable>
+                            <executable>${env.JAVA_HOME}/bin/jar</executable>
                             <arguments>
                                 <argument>--describe-module</argument>
                                 <argument>--file</argument>
