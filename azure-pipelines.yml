@@ -17,6 +17,6 @@ steps:
     javaHomeOption: 'JDKVersion'
     jdkVersionOption: '1.11'
     jdkArchitectureOption: 'x64'
-    publishJUnitResults: false
-    testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    goals: 'clean'
+    publishJUnitResults: true
+    testResultsFiles: '**/target/junit-platform/TEST-*.xml'
+    goals: 'verify'
