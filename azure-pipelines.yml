@@ -13,10 +13,10 @@ steps:
 - task: Maven@3
   inputs:
     mavenPomFile: 'pom.xml'
-    mavenOptions: '--batch-mode -Xmx3072m'
+    mavenOptions: '-Xmx3072m'
     javaHomeOption: 'JDKVersion'
     jdkVersionOption: '1.11'
     jdkArchitectureOption: 'x64'
     publishJUnitResults: true
     testResultsFiles: '**/target/junit-platform/TEST-*.xml'
-    goals: 'verify'
+    goals: '--batch-mode verify'
