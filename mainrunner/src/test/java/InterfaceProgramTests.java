@@ -14,11 +14,8 @@
  * limitations under the License.
  */
 
-public enum EnumProgramTests {
-  α,
-  Ω;
-
-  public static void main(String[] args) {
-    System.out.println(java.util.List.of(EnumProgramTests.values()));
+public interface InterfaceProgramTests {
+  static void main(String[] args) {
+    System.out.println("And it works in interfaces, too \uD83E\uDD2A");
   }
 }
