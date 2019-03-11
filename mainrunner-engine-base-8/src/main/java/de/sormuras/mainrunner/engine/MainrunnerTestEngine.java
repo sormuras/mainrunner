@@ -69,9 +69,7 @@ public class MainrunnerTestEngine implements TestEngine {
     ClassFilter classFilter = ClassFilter.of(buildClassNamePredicate(discoveryRequest), c -> true);
 
     // class-path root
-    discoveryRequest
-        .getSelectorsByType(ClasspathRootSelector.class)
-        .stream()
+    discoveryRequest.getSelectorsByType(ClasspathRootSelector.class).stream()
         .map(ClasspathRootSelector::getClasspathRoot)
         .peek(candidate -> handleCandidate(engine, candidate))
         .map(uri -> findAllClassesInClasspathRoot(uri, classFilter))
@@ -79,26 +77,20 @@ public class MainrunnerTestEngine implements TestEngine {
         .forEach(candidate -> handleCandidate(engine, candidate));
 
     // package
-    discoveryRequest
-        .getSelectorsByType(PackageSelector.class)
-        .stream()
+    discoveryRequest.getSelectorsByType(PackageSelector.class).stream()
         .map(PackageSelector::getPackageName)
         .map(packageName -> findAllClassesInPackage(packageName, classFilter))
         .flatMap(Collection::stream)
         .forEach(candidate -> handleCandidate(engine, candidate));
 
     // class
-    discoveryRequest
-        .getSelectorsByType(ClassSelector.class)
-        .stream()
+    discoveryRequest.getSelectorsByType(ClassSelector.class).stream()
         .map(ClassSelector::getJavaClass)
         .filter(classFilter)
         .forEach(candidate -> handleCandidate(engine, candidate));
 
     // uri
-    discoveryRequest
-        .getSelectorsByType(UriSelector.class)
-        .stream()
+    discoveryRequest.getSelectorsByType(UriSelector.class).stream()
         .map(UriSelector::getUri)
         .forEach(candidate -> handleCandidate(engine, candidate));
 

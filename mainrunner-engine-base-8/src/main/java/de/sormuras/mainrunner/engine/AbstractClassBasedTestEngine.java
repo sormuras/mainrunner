@@ -72,9 +72,7 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
     ClassFilter classFilter = ClassFilter.of(buildClassNamePredicate(discoveryRequest), c -> true);
 
     // class-path root
-    discoveryRequest
-        .getSelectorsByType(ClasspathRootSelector.class)
-        .stream()
+    discoveryRequest.getSelectorsByType(ClasspathRootSelector.class).stream()
         .map(ClasspathRootSelector::getClasspathRoot)
         .map(uri -> findAllClassesInClasspathRoot(uri, classFilter))
         .flatMap(Collection::stream)
