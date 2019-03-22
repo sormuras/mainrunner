@@ -29,9 +29,9 @@
         <junit.jupiter.version>158484a786</junit.jupiter.version>
         -->
         <junit.platform.group>org.junit.platform</junit.platform.group>
-        <junit.platform.version>1.4.0</junit.platform.version>
+        <junit.platform.version>1.5.0-M1</junit.platform.version>
         <junit.jupiter.group>org.junit.jupiter</junit.jupiter.group>
-        <junit.jupiter.version>5.4.0</junit.jupiter.version>
+        <junit.jupiter.version>5.5.0-M1</junit.jupiter.version>
     </properties>
 
     <modules>
