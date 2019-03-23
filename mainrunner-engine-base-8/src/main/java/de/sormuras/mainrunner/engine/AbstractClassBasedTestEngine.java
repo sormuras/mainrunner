@@ -1,12 +1,7 @@
 package de.sormuras.mainrunner.engine;
 
-import static org.junit.platform.commons.util.ReflectionUtils.findAllClassesInClasspathRoot;
-import static org.junit.platform.engine.support.filter.ClasspathScanningSupport.buildClassNamePredicate;
-
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.Collection;
-import org.junit.platform.commons.util.ClassFilter;
 import org.junit.platform.engine.EngineDiscoveryRequest;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.ExecutionRequest;
@@ -14,11 +9,11 @@ import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
-import org.junit.platform.engine.discovery.ClasspathRootSelector;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
 import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.engine.support.descriptor.EngineDescriptor;
 import org.junit.platform.engine.support.descriptor.MethodSource;
+import org.junit.platform.engine.support.discovery.EngineDiscoveryRequestResolver;
 
 public abstract class AbstractClassBasedTestEngine implements TestEngine {
 
@@ -69,18 +64,37 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
   @Override
   public TestDescriptor discover(EngineDiscoveryRequest discoveryRequest, UniqueId uniqueId) {
     EngineDescriptor engine = new EngineDescriptor(uniqueId, getClass().getSimpleName());
-    ClassFilter classFilter = ClassFilter.of(buildClassNamePredicate(discoveryRequest), c -> true);
 
+    // FROM...
+    //    ClassFilter classFilter = ClassFilter.of(buildClassNamePredicate(discoveryRequest), c ->
+    // true);
     // class-path root
-    discoveryRequest.getSelectorsByType(ClasspathRootSelector.class).stream()
-        .map(ClasspathRootSelector::getClasspathRoot)
-        .map(uri -> findAllClassesInClasspathRoot(uri, classFilter))
-        .flatMap(Collection::stream)
-        .forEach(candidate -> handleCandidate(engine, candidate));
+    //    discoveryRequest.getSelectorsByType(ClasspathRootSelector.class).stream()
+    //        .map(ClasspathRootSelector::getClasspathRoot)
+    //        .map(uri -> findAllClassesInClasspathRoot(uri, classFilter))
+    //        .flatMap(Collection::stream)
+    //        .forEach(candidate -> handleCandidate(engine, candidate));
+
+    // TO...
+    EngineDiscoveryRequestResolver<EngineDescriptor> resolver =
+        EngineDiscoveryRequestResolver.<EngineDescriptor>builder()
+            .addClassContainerSelectorResolver(this::isTestClass)
+            // .addSelectorResolver(context -> new
+            // ClassSelectorResolver(context.getClassNameFilter(),
+            // context.getEngineDescriptor().getConfiguration()))
+            // .addSelectorResolver(context -> new
+            // MethodSelectorResolver(context.getEngineDescriptor().getConfiguration()))
+            // .addTestDescriptorVisitor(context -> new
+            // MethodOrderingVisitor(context.getEngineDescriptor().getConfiguration()))
+            .addTestDescriptorVisitor(context -> TestDescriptor::prune)
+            .build();
+
+    resolver.resolve(discoveryRequest, engine);
 
     return engine;
   }
 
+  // PART OF "FROM..."
   private void handleCandidate(EngineDescriptor engine, Class<?> candidate) {
     if (!isTestClass(candidate)) {
       return;
