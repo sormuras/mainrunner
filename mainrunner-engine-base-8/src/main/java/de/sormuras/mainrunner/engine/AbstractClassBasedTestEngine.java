@@ -1,8 +1,14 @@
 package de.sormuras.mainrunner.engine;
 
+import static java.util.stream.Collectors.toSet;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
+
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Optional;
+import org.junit.platform.commons.support.HierarchyTraversalMode;
+import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.platform.engine.EngineDiscoveryRequest;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.ExecutionRequest;
@@ -150,7 +156,17 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine, Select
         context
             .addToParent(parent -> Optional.of(resolve(parent, candidate)))
             .orElseThrow(Error::new);
-    return Resolution.match(Match.exact(descriptor));
+    return Resolution.match(
+        Match.exact(
+            descriptor,
+            () ->
+                ReflectionSupport.findMethods(
+                        selector.getJavaClass(),
+                        this::isTestMethod,
+                        HierarchyTraversalMode.TOP_DOWN)
+                    .stream()
+                    .map(method -> selectMethod(selector.getJavaClass(), method))
+                    .collect(toSet())));
   }
 
   private TestDescriptor resolve(TestDescriptor parent, Class<?> candidate) {
@@ -166,7 +182,11 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine, Select
       return Resolution.unresolved();
     }
     TestDescriptor descriptor =
-        context.addToParent(parent -> Optional.of(resolve(parent, method))).orElseThrow(Error::new);
+        context
+            .addToParent(
+                () -> selectClass(selector.getJavaClass()),
+                parent -> Optional.of(resolve(parent, method)))
+            .orElseThrow(Error::new);
     return Resolution.match(Match.exact(descriptor));
   }
 
