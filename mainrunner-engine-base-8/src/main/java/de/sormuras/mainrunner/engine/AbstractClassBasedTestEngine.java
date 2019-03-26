@@ -2,6 +2,7 @@ package de.sormuras.mainrunner.engine;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Optional;
 import org.junit.platform.engine.EngineDiscoveryRequest;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.ExecutionRequest;
@@ -9,13 +10,16 @@ import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.discovery.ClassSelector;
+import org.junit.platform.engine.discovery.MethodSelector;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
 import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.engine.support.descriptor.EngineDescriptor;
 import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.engine.support.discovery.EngineDiscoveryRequestResolver;
+import org.junit.platform.engine.support.discovery.SelectorResolver;
 
-public abstract class AbstractClassBasedTestEngine implements TestEngine {
+public abstract class AbstractClassBasedTestEngine implements TestEngine, SelectorResolver {
 
   private static class TestClass extends AbstractTestDescriptor {
 
@@ -64,55 +68,14 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
   @Override
   public TestDescriptor discover(EngineDiscoveryRequest discoveryRequest, UniqueId uniqueId) {
     EngineDescriptor engine = new EngineDescriptor(uniqueId, getClass().getSimpleName());
-
-    // FROM...
-    //    ClassFilter classFilter = ClassFilter.of(buildClassNamePredicate(discoveryRequest), c ->
-    // true);
-    // class-path root
-    //    discoveryRequest.getSelectorsByType(ClasspathRootSelector.class).stream()
-    //        .map(ClasspathRootSelector::getClasspathRoot)
-    //        .map(uri -> findAllClassesInClasspathRoot(uri, classFilter))
-    //        .flatMap(Collection::stream)
-    //        .forEach(candidate -> handleCandidate(engine, candidate));
-
-    // TO...
     EngineDiscoveryRequestResolver<EngineDescriptor> resolver =
         EngineDiscoveryRequestResolver.<EngineDescriptor>builder()
             .addClassContainerSelectorResolver(this::isTestClass)
-            // .addSelectorResolver(context -> new
-            // ClassSelectorResolver(context.getClassNameFilter(),
-            // context.getEngineDescriptor().getConfiguration()))
-            // .addSelectorResolver(context -> new
-            // MethodSelectorResolver(context.getEngineDescriptor().getConfiguration()))
-            // .addTestDescriptorVisitor(context -> new
-            // MethodOrderingVisitor(context.getEngineDescriptor().getConfiguration()))
+            .addSelectorResolver(context -> this)
             .addTestDescriptorVisitor(context -> TestDescriptor::prune)
             .build();
-
     resolver.resolve(discoveryRequest, engine);
-
     return engine;
-  }
-
-  // PART OF "FROM..."
-  private void handleCandidate(EngineDescriptor engine, Class<?> candidate) {
-    if (!isTestClass(candidate)) {
-      return;
-    }
-    UniqueId classId = engine.getUniqueId().append("class", candidate.getName());
-    String classDisplayName = createTestClassDisplayName(candidate);
-    TestClass testClass = new TestClass(classId, classDisplayName, candidate);
-    engine.addChild(testClass);
-    for (Method method : candidate.getMethods()) {
-      if (!isTestMethod(method)) {
-        continue;
-      }
-      UniqueId testId = testClass.getUniqueId().append("method", method.getName());
-      String testDisplayName = getTestMethodDisplayName(method);
-      Object[] testArguments = getTestArguments(method);
-      TestMethod testMethod = new TestMethod(testId, testDisplayName, method, testArguments);
-      testClass.addChild(testMethod);
-    }
   }
 
   public abstract boolean isTestClass(Class<?> candidate);
@@ -175,5 +138,42 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
       return TestExecutionResult.failed(e);
     }
     return TestExecutionResult.successful();
+  }
+
+  @Override
+  public Resolution resolve(ClassSelector selector, Context context) {
+    Class<?> candidate = selector.getJavaClass();
+    if (!isTestClass(candidate)) {
+      return Resolution.unresolved();
+    }
+    TestDescriptor descriptor =
+        context
+            .addToParent(parent -> Optional.of(resolve(parent, candidate)))
+            .orElseThrow(Error::new);
+    return Resolution.match(Match.exact(descriptor));
+  }
+
+  private TestDescriptor resolve(TestDescriptor parent, Class<?> candidate) {
+    UniqueId classId = parent.getUniqueId().append("class", candidate.getName());
+    String classDisplayName = createTestClassDisplayName(candidate);
+    return new TestClass(classId, classDisplayName, candidate);
+  }
+
+  @Override
+  public Resolution resolve(MethodSelector selector, Context context) {
+    Method method = selector.getJavaMethod();
+    if (!isTestMethod(method)) {
+      return Resolution.unresolved();
+    }
+    TestDescriptor descriptor =
+        context.addToParent(parent -> Optional.of(resolve(parent, method))).orElseThrow(Error::new);
+    return Resolution.match(Match.exact(descriptor));
+  }
+
+  private TestDescriptor resolve(TestDescriptor parent, Method method) {
+    UniqueId testId = parent.getUniqueId().append("method", method.getName());
+    String testDisplayName = getTestMethodDisplayName(method);
+    Object[] testArguments = getTestArguments(method);
+    return new TestMethod(testId, testDisplayName, method, testArguments);
   }
 }
