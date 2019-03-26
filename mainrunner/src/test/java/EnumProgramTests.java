@@ -19,6 +19,8 @@ public enum EnumProgramTests {
   Ω;
 
   public static void main(String[] args) {
-    System.out.println(java.util.List.of(EnumProgramTests.values()));
+    for (Object value : values()) {
+      System.out.println(value);
+    }
   }
 }
