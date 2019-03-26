@@ -1,11 +1,14 @@
 package de.sormuras.mainrunner.engine;
 
+import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Optional;
 import org.junit.platform.commons.support.HierarchyTraversalMode;
 import org.junit.platform.commons.support.ReflectionSupport;
@@ -18,6 +21,7 @@ import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.discovery.ClassSelector;
 import org.junit.platform.engine.discovery.MethodSelector;
+import org.junit.platform.engine.discovery.UniqueIdSelector;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
 import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.engine.support.descriptor.EngineDescriptor;
@@ -161,11 +165,11 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine, Select
             descriptor,
             () ->
                 ReflectionSupport.findMethods(
-                        selector.getJavaClass(),
+                        candidate,
                         this::isTestMethod,
                         HierarchyTraversalMode.TOP_DOWN)
                     .stream()
-                    .map(method -> selectMethod(selector.getJavaClass(), method))
+                    .map(method -> selectMethod(candidate, method))
                     .collect(toSet())));
   }
 
@@ -195,5 +199,19 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine, Select
     String testDisplayName = getTestMethodDisplayName(method);
     Object[] testArguments = getTestArguments(method);
     return new TestMethod(testId, testDisplayName, method, testArguments);
+  }
+
+  @Override
+  public Resolution resolve(UniqueIdSelector selector, Context context) {
+    UniqueId.Segment lastSegment = selector.getUniqueId().getLastSegment();
+    if (lastSegment.getType().equals("class")) {
+      return Resolution.selectors(singleton(selectClass(lastSegment.getValue())));
+    }
+    if (lastSegment.getType().equals("method")) {
+      UniqueId uniqueIdOfClass = selector.getUniqueId().removeLastSegment();
+      String className = uniqueIdOfClass.getLastSegment().getValue();
+      return Resolution.selectors(singleton(selectMethod(className, lastSegment.getValue())));
+    }
+    return Resolution.unresolved();
   }
 }
