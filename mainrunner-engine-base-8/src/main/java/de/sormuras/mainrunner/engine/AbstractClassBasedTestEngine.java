@@ -7,9 +7,8 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMetho
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Optional;
+import java.util.function.Predicate;
 import org.junit.platform.commons.support.HierarchyTraversalMode;
 import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.platform.engine.EngineDiscoveryRequest;
@@ -29,7 +28,7 @@ import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.engine.support.discovery.EngineDiscoveryRequestResolver;
 import org.junit.platform.engine.support.discovery.SelectorResolver;
 
-public abstract class AbstractClassBasedTestEngine implements TestEngine, SelectorResolver {
+public abstract class AbstractClassBasedTestEngine implements TestEngine {
 
   private static class TestClass extends AbstractTestDescriptor {
 
@@ -81,7 +80,8 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine, Select
     EngineDiscoveryRequestResolver<EngineDescriptor> resolver =
         EngineDiscoveryRequestResolver.<EngineDescriptor>builder()
             .addClassContainerSelectorResolver(this::isTestClass)
-            .addSelectorResolver(context -> this)
+            .addSelectorResolver(
+                context -> new ClassBasedSelectorResolver(context.getClassNameFilter()))
             .addTestDescriptorVisitor(context -> TestDescriptor::prune)
             .build();
     resolver.resolve(discoveryRequest, engine);
@@ -150,68 +150,78 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine, Select
     return TestExecutionResult.successful();
   }
 
-  @Override
-  public Resolution resolve(ClassSelector selector, Context context) {
-    Class<?> candidate = selector.getJavaClass();
-    if (!isTestClass(candidate)) {
+  class ClassBasedSelectorResolver implements SelectorResolver {
+
+    private final Predicate<String> classNameFilter;
+
+    ClassBasedSelectorResolver(Predicate<String> classNameFilter) {
+      this.classNameFilter = classNameFilter;
+    }
+
+    @Override
+    public Resolution resolve(ClassSelector selector, SelectorResolver.Context context) {
+      if (!classNameFilter.test(selector.getClassName()) || !isTestClass(selector.getJavaClass())) {
+        return Resolution.unresolved();
+      }
+      Class<?> candidate = selector.getJavaClass();
+      TestDescriptor descriptor =
+          context
+              .addToParent(parent -> Optional.of(resolve(parent, candidate)))
+              .orElseThrow(Error::new);
+      return Resolution.match(
+          Match.exact(
+              descriptor,
+              () ->
+                  ReflectionSupport.findMethods(
+                          candidate,
+                          AbstractClassBasedTestEngine.this::isTestMethod,
+                          HierarchyTraversalMode.TOP_DOWN)
+                      .stream()
+                      .map(method -> selectMethod(candidate, method))
+                      .collect(toSet())));
+    }
+
+    private TestDescriptor resolve(TestDescriptor parent, Class<?> candidate) {
+      UniqueId classId = parent.getUniqueId().append("class", candidate.getName());
+      String classDisplayName = createTestClassDisplayName(candidate);
+      return new AbstractClassBasedTestEngine.TestClass(classId, classDisplayName, candidate);
+    }
+
+    @Override
+    public Resolution resolve(MethodSelector selector, SelectorResolver.Context context) {
+      Method method = selector.getJavaMethod();
+      if (!isTestMethod(method)) {
+        return Resolution.unresolved();
+      }
+      TestDescriptor descriptor =
+          context
+              .addToParent(
+                  () -> selectClass(selector.getJavaClass()),
+                  parent -> Optional.of(resolve(parent, method)))
+              .orElseThrow(Error::new);
+      return Resolution.match(Match.exact(descriptor));
+    }
+
+    private TestDescriptor resolve(TestDescriptor parent, Method method) {
+      UniqueId testId = parent.getUniqueId().append("method", method.getName());
+      String testDisplayName = getTestMethodDisplayName(method);
+      Object[] testArguments = getTestArguments(method);
+      return new AbstractClassBasedTestEngine.TestMethod(
+          testId, testDisplayName, method, testArguments);
+    }
+
+    @Override
+    public Resolution resolve(UniqueIdSelector selector, SelectorResolver.Context context) {
+      UniqueId.Segment lastSegment = selector.getUniqueId().getLastSegment();
+      if (lastSegment.getType().equals("class")) {
+        return Resolution.selectors(singleton(selectClass(lastSegment.getValue())));
+      }
+      if (lastSegment.getType().equals("method")) {
+        UniqueId uniqueIdOfClass = selector.getUniqueId().removeLastSegment();
+        String className = uniqueIdOfClass.getLastSegment().getValue();
+        return Resolution.selectors(singleton(selectMethod(className, lastSegment.getValue())));
+      }
       return Resolution.unresolved();
     }
-    TestDescriptor descriptor =
-        context
-            .addToParent(parent -> Optional.of(resolve(parent, candidate)))
-            .orElseThrow(Error::new);
-    return Resolution.match(
-        Match.exact(
-            descriptor,
-            () ->
-                ReflectionSupport.findMethods(
-                        candidate,
-                        this::isTestMethod,
-                        HierarchyTraversalMode.TOP_DOWN)
-                    .stream()
-                    .map(method -> selectMethod(candidate, method))
-                    .collect(toSet())));
-  }
-
-  private TestDescriptor resolve(TestDescriptor parent, Class<?> candidate) {
-    UniqueId classId = parent.getUniqueId().append("class", candidate.getName());
-    String classDisplayName = createTestClassDisplayName(candidate);
-    return new TestClass(classId, classDisplayName, candidate);
-  }
-
-  @Override
-  public Resolution resolve(MethodSelector selector, Context context) {
-    Method method = selector.getJavaMethod();
-    if (!isTestMethod(method)) {
-      return Resolution.unresolved();
-    }
-    TestDescriptor descriptor =
-        context
-            .addToParent(
-                () -> selectClass(selector.getJavaClass()),
-                parent -> Optional.of(resolve(parent, method)))
-            .orElseThrow(Error::new);
-    return Resolution.match(Match.exact(descriptor));
-  }
-
-  private TestDescriptor resolve(TestDescriptor parent, Method method) {
-    UniqueId testId = parent.getUniqueId().append("method", method.getName());
-    String testDisplayName = getTestMethodDisplayName(method);
-    Object[] testArguments = getTestArguments(method);
-    return new TestMethod(testId, testDisplayName, method, testArguments);
-  }
-
-  @Override
-  public Resolution resolve(UniqueIdSelector selector, Context context) {
-    UniqueId.Segment lastSegment = selector.getUniqueId().getLastSegment();
-    if (lastSegment.getType().equals("class")) {
-      return Resolution.selectors(singleton(selectClass(lastSegment.getValue())));
-    }
-    if (lastSegment.getType().equals("method")) {
-      UniqueId uniqueIdOfClass = selector.getUniqueId().removeLastSegment();
-      String className = uniqueIdOfClass.getLastSegment().getValue();
-      return Resolution.selectors(singleton(selectMethod(className, lastSegment.getValue())));
-    }
-    return Resolution.unresolved();
   }
 }
