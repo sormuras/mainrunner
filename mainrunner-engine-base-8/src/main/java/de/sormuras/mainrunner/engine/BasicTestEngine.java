@@ -38,7 +38,7 @@ public class BasicTestEngine extends AbstractClassBasedTestEngine {
   }
 
   @Override
-  public Object[] getTestArguments(Method method) {
+  public Object[] createTestArguments(Method method) {
     return new Object[] {new String[0]}; // pass an empty String[] to each main method
   }
 }
