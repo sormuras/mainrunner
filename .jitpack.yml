@@ -1,1 +1,6 @@
 jdk: openjdk11
+
+install:
+  - VERSION="2-SNAPSHOT"
+  - jshell -R-Dproject.version=${VERSION} https://bit.ly/make-java
+  - mvn install:install-file -DgroupId=de.sormuras.mainrunner -DartifactId=mainrunner-engine -Dversion=1.0.0-SNAPSHOT -Dpackaging=jar -DgeneratePom=true -Dfile=work\main\modules\de.sormuras.mainrunner.engine-${VERSION}.jar -Dsources=work\main\sources\de.sormuras.mainrunner.engine-${VERSION}-sources.jar -Djavadoc=work\main\javadoc\mainrunner-${VERSION}-javadoc.jar
