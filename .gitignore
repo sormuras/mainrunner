@@ -4,6 +4,7 @@
 .settings/
 work/
 build/
+target/
 
 # Files
 .classpath
