@@ -15,5 +15,8 @@
  */
 
 module de.sormuras.mainrunner.engine {
-  // TODO provides org.junit.platform.TestEngine with de.sormuras.mainrunner.Mainrunner;
+  requires org.junit.platform.engine;
+
+  provides org.junit.platform.engine.TestEngine with
+      de.sormuras.mainrunner.engine.Mainrunner;
 }
