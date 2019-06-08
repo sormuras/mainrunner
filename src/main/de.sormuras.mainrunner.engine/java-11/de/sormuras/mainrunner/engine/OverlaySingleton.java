@@ -26,7 +26,9 @@ enum OverlaySingleton implements Overlay {
 
   @Override
   public String display() {
-    return "Mainrunner (" + getClass().getModule().getDescriptor().toNameAndVersion() + ")";
+    var module = getClass().getModule();
+    var descriptor = module.getDescriptor();
+    return "Mainrunner (" + (descriptor != null ? descriptor.toNameAndVersion() : module) + ")";
   }
 
   @Override
