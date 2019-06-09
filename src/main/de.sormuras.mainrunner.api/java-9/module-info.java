@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-module de.sormuras.mainrunner.engine {
-  requires static de.sormuras.mainrunner.api;
-
-  requires org.junit.platform.engine;
-
-  provides org.junit.platform.engine.TestEngine with
-      de.sormuras.mainrunner.engine.Mainrunner;
+module de.sormuras.mainrunner.api {
+  exports de.sormuras.mainrunner.api;
 }

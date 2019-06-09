@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
-module de.sormuras.mainrunner.engine {
-  requires static de.sormuras.mainrunner.api;
+package de.sormuras.mainrunner.api;
 
-  requires org.junit.platform.engine;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  provides org.junit.platform.engine.TestEngine with
-      de.sormuras.mainrunner.engine.Mainrunner;
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface MainRepeatable {
+  Main[] value();
 }
