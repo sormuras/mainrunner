@@ -23,8 +23,7 @@ import org.junit.platform.testkit.engine.EngineTestKit;
 
 public class IntegrationTests {
 
-  @Test
-  void test() {}
+  public static void main(String[] args) {}
 
   @Test
   void verifyMainrunnerStatistics() {
