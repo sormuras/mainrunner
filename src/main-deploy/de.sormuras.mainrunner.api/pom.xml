@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>de.sormuras.mainrunner</groupId>
+    <artifactId>de.sormuras.mainrunner.api</artifactId>
+    <version>2.0.3</version>
+
+    <name>MAINRUNNER API</name>
+    <description>Optional API annotating Java programs</description>
+    <url>https://github.com/sormuras/mainrunner</url>
+    <scm>
+        <url>https://github.com/sormuras/mainrunner.git</url>
+    </scm>
+
+    <developers>
+        <developer>
+            <name>Christian Stein</name>
+            <id>sormuras</id>
+        </developer>
+    </developers>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+</project>
