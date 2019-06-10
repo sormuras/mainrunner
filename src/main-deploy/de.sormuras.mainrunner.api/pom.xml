@@ -6,7 +6,7 @@
 
     <groupId>de.sormuras.mainrunner</groupId>
     <artifactId>de.sormuras.mainrunner.api</artifactId>
-    <version>2.0.3</version>
+    <version>2.0.4-SNAPSHOT</version>
 
     <name>MAINRUNNER API</name>
     <description>Optional API annotating Java programs</description>
