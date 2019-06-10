@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
@@ -78,16 +79,9 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
           context
               .addToParent(
                   () -> selectClass(selector.getJavaClass()),
-                  parent -> Optional.of(createTestMethodDescriptor(parent, method)))
+                  parent -> Optional.of(createTestMethod(parent, method)))
               .orElseThrow(Error::new);
       return Resolution.match(Match.exact(descriptor));
-    }
-
-    private TestDescriptor createTestMethodDescriptor(TestDescriptor parent, Method method) {
-      UniqueId testId = parent.getUniqueId().append("method", method.getName());
-      String testDisplayName = createTestMethodDisplayName(method);
-      Object[] testArguments = createTestArguments(method);
-      return new TestMethod(testId, testDisplayName, method, testArguments);
     }
 
     @Override
@@ -106,7 +100,6 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
   }
 
   private static class TestClass extends AbstractTestDescriptor {
-
     private final Class<?> testClass;
 
     private TestClass(UniqueId uniqueId, String displayName, Class<?> testClass) {
@@ -124,11 +117,11 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
     }
   }
 
-  private static class TestMethod extends AbstractTestDescriptor {
+  protected static class TestMethod extends AbstractTestDescriptor {
     private final Method testMethod;
     private final Object[] arguments;
 
-    private TestMethod(
+    protected TestMethod(
         UniqueId uniqueId, String displayName, Method testMethod, Object[] arguments) {
       super(uniqueId, displayName, MethodSource.from(testMethod));
       this.testMethod = testMethod;
@@ -166,7 +159,6 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
 
   public abstract boolean isTestMethod(Method method);
 
-
   public String createEngineDisplayName() {
     return getClass().getSimpleName();
   }
@@ -183,7 +175,19 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
     if (method.getParameterCount() == 0) {
       return new Object[0];
     }
+    // Create an empty array of type X argument...
+    Class<?> type0 = method.getParameterTypes()[0];
+    if (method.getParameterCount() == 1 && type0.isArray()) {
+      return new Object[] {Array.newInstance(type0.getComponentType(), 0)};
+    }
     throw new RuntimeException("Overriding createTestArguments(Method) might help");
+  }
+
+  public TestDescriptor createTestMethod(TestDescriptor parent, Method method) {
+    UniqueId testId = parent.getUniqueId().append("method", method.getName());
+    String testDisplayName = createTestMethodDisplayName(method);
+    Object[] testArguments = createTestArguments(method);
+    return new TestMethod(testId, testDisplayName, method, testArguments);
   }
 
   public Object createTestInstance(Class<?> testClass) {
