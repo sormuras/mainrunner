@@ -68,13 +68,21 @@ public class Mainrunner extends AbstractClassBasedTestEngine {
 
   private TestDescriptor newTestMethod(TestDescriptor parent, Method method, Main main) {
     UniqueId testId = parent.getUniqueId().append("method", method.getName() + main.hashCode());
-    String name = main.displayName().replace("${ARGS}", String.join("\", \"", main.value()));
     Object[] args = new Object[] {main.value()};
-    return new TestMethod(testId, name, method, args);
+    return new TestMethod(testId, displayName(main), method, args);
   }
 
   @Override
   public Object createTestInstance(Class<?> testClass) {
     return null; // all "main" methods are static, no instance needed
+  }
+
+  private static String displayName(Main main) {
+    String displayName = main.displayName();
+    String args = main.value().length > 0 ? '"' + String.join("\", \"", main.value()) + '"' : "";
+    if (displayName.length() > 0) {
+      return displayName.replace("${ARGS}", args);
+    }
+    return "main(" + args + ")";
   }
 }
