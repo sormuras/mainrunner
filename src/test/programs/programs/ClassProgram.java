@@ -18,6 +18,6 @@ package programs;
 
 public class ClassProgram {
   public static void main(String[] args) {
-    System.out.println("(-:");
+    assert args.length == 0;
   }
 }

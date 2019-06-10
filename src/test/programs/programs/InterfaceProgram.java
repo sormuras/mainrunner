@@ -18,6 +18,6 @@ package programs;
 
 public interface InterfaceProgram {
   static void main(String[] args) {
-    System.out.println("And it works in interfaces, too \uD83E\uDD2A");
+    assert args.length == 0;
   }
 }

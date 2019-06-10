@@ -21,8 +21,6 @@ public enum EnumProgram {
   Ω;
 
   public static void main(String[] args) {
-    for (Object value : values()) {
-      System.out.println(value);
-    }
+    assert args.length == 0;
   }
 }

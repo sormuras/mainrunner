@@ -38,6 +38,8 @@ public class IntegrationTests {
   }
 
   public static class StaticNestedClassProgram {
-    public static void main(String[] args) {}
+    public static void main(String[] args) {
+      assert args.length == 0;
+    }
   }
 }
