@@ -4,6 +4,9 @@ import de.sormuras.mainrunner.api.Main;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
+
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
 
@@ -19,6 +22,11 @@ public class Mainrunner extends AbstractClassBasedTestEngine {
   @Override
   public String createEngineDisplayName() {
     return overlay.display();
+  }
+
+  @Override
+  public String createTestMethodDisplayName(Method method) {
+    return "main()";
   }
 
   @Override
@@ -43,27 +51,17 @@ public class Mainrunner extends AbstractClassBasedTestEngine {
   }
 
   @Override
-  public TestDescriptor createTestMethod(TestDescriptor parent, Method method) {
+  public Stream<UnaryOperator<TestDescriptor>> createTestMethods(Method method) {
     try {
       Class.forName("de.sormuras.mainrunner.api.Main");
     } catch (ClassNotFoundException e) {
-      return newTestMethod(parent, method);
+      return super.createTestMethods(method);
     }
     Main[] mains = method.getDeclaredAnnotationsByType(Main.class);
     if (mains.length == 0) {
-      return newTestMethod(parent, method);
+      return super.createTestMethods(method);
     }
-    if (mains.length == 1) {
-      return newTestMethod(parent, method, mains[0]);
-    }
-    throw new UnsupportedOperationException("Multiple @Main annotation aren't supported, yet!");
-  }
-
-  private TestDescriptor newTestMethod(TestDescriptor parent, Method method) {
-    UniqueId testId = parent.getUniqueId().append("method", method.getName());
-    String testDisplayName = method.getName() + "()";
-    Object[] testArguments = new Object[] {new String[0]};
-    return new TestMethod(testId, testDisplayName, method, testArguments);
+    return Arrays.stream(mains).map(main -> (parent -> newTestMethod(parent, method, main)));
   }
 
   private TestDescriptor newTestMethod(TestDescriptor parent, Method method, Main main) {

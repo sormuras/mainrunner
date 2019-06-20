@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
+
 import org.junit.platform.commons.support.HierarchyTraversalMode;
 import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.platform.engine.EngineDiscoveryRequest;
@@ -75,13 +78,15 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
       if (!isTestMethod(method)) {
         return Resolution.unresolved();
       }
-      TestDescriptor descriptor =
-          context
-              .addToParent(
-                  () -> selectClass(selector.getJavaClass()),
-                  parent -> Optional.of(createTestMethod(parent, method)))
-              .orElseThrow(Error::new);
-      return Resolution.match(Match.exact(descriptor));
+      Set<Match> matches = createTestMethods(method)
+              .map(descriptorCreator -> context
+                      .addToParent(
+                              () -> selectClass(selector.getJavaClass()),
+                              parent -> Optional.of(descriptorCreator.apply(parent)))
+                      .orElseThrow(Error::new))
+              .map(Match::exact)
+              .collect(toSet());
+      return Resolution.matches(matches);
     }
 
     @Override
@@ -183,11 +188,13 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
     throw new RuntimeException("Overriding createTestArguments(Method) might help");
   }
 
-  public TestDescriptor createTestMethod(TestDescriptor parent, Method method) {
-    UniqueId testId = parent.getUniqueId().append("method", method.getName());
-    String testDisplayName = createTestMethodDisplayName(method);
-    Object[] testArguments = createTestArguments(method);
-    return new TestMethod(testId, testDisplayName, method, testArguments);
+  public Stream<UnaryOperator<TestDescriptor>> createTestMethods(Method method) {
+    return Stream.of(parent -> {
+      UniqueId testId = parent.getUniqueId().append("method", method.getName());
+      String testDisplayName = createTestMethodDisplayName(method);
+      Object[] testArguments = createTestArguments(method);
+      return new TestMethod(testId, testDisplayName, method, testArguments);
+    });
   }
 
   public Object createTestInstance(Class<?> testClass) {
