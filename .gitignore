@@ -2,6 +2,7 @@
 .gradle/
 .idea/
 .settings/
+bin/
 work/
 build/
 target/
