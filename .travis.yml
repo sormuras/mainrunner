@@ -4,7 +4,7 @@ jdk: openjdk-ea
 install: true
 
 script:
-  - jshell https://bit.ly/make-java
+  - jshell build.jsh
 
 cache:
   directories:

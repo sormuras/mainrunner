@@ -11,5 +11,5 @@ pool:
 steps:
   - script: |
       echo Starting the build...
-      jshell https://bit.ly/make-java
-    displayName: 'Build with Make.java...'
+      jshell build.jsh
+    displayName: 'Build...'
