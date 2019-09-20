@@ -1,9 +1,9 @@
 package build;
 
 import de.sormuras.bach.Bach;
+import de.sormuras.bach.Command;
 import de.sormuras.bach.Jigsaw;
 import de.sormuras.bach.Project;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -14,7 +14,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.spi.ToolProvider;
+import java.util.stream.Collectors;
 
 public class BuildMainrunner {
 
@@ -29,15 +29,26 @@ public class BuildMainrunner {
             mainrunner.realms.get(0),
             List.of("de.sormuras.mainrunner.api", "de.sormuras.mainrunner.engine"));
 
-    for (var command : commands) {
-      System.out.println(command.toCommandLine());
-      var code =
-          ToolProvider.findFirst(command.getName())
-              .orElseThrow()
-              .run(System.out, System.err, command.toStringArray());
-      if (code != 0) {
-        throw new AssertionError("Expected 0, but got: " + code);
-      }
+    //    for (var command : commands) {
+    //      System.out.println(command.toCommandLine());
+    //      var code =
+    //          ToolProvider.findFirst(command.getName())
+    //              .orElseThrow()
+    //              .run(System.out, System.err, command.toStringArray());
+    //      if (code != 0) {
+    //        throw new AssertionError("Expected 0, but got: " + code);
+    //      }
+    //    }
+
+    try {
+      Files.write(
+          Path.of("bin/build.bat"),
+          commands.stream()
+              .map(Command::toCommandLine)
+              .peek(System.out::println)
+              .collect(Collectors.toList()));
+    } catch (IOException e) {
+      throw new UncheckedIOException("Writing build batch file failed", e);
     }
 
     deploy(mainrunner);
