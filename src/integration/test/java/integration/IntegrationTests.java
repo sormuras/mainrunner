@@ -30,8 +30,7 @@ public class IntegrationTests {
     EngineTestKit.engine("mainrunner")
         .selectors(
             DiscoverySelectors.selectClass(StaticNestedClassProgram.class),
-            // DiscoverySelectors.selectModule("programs"))
-            DiscoverySelectors.selectPackage("programs"))
+            DiscoverySelectors.selectModule("programs"))
         .filters(ClassNameFilter.includeClassNamePatterns(".*Program"))
         .execute()
         .tests()
