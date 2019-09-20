@@ -72,7 +72,7 @@ public class BuildMainrunner {
             Map.of(api.descriptor.name(), api, engine.descriptor.name(), engine));
     var library = new Project.Library(List.of(Path.of("lib")), __ -> null);
     return new Project(
-        Path.of(""), Path.of("bin"), "mainrunner", Version.parse("2.1.1"), library, List.of(main));
+        Path.of(""), Path.of("bin"), "mainrunner", Version.parse("2.1.2"), library, List.of(main));
   }
 
   private static void deploy(Project mainrunner) {
