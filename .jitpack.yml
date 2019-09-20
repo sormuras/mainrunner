@@ -1,7 +1,6 @@
 jdk: openjdk11
 
 install:
-  - cp mainrunner.properties build.properties
-  - VERSION="3-ea"
+  - VERSION="2.2-ea"
   - jshell build.jsh
 #  - mvn install:install-file -DgroupId=de.sormuras.mainrunner -DartifactId=mainrunner-engine -Dversion=${VERSION} -Dpackaging=jar -DgeneratePom=true -Dfile=target/main/modules/de.sormuras.mainrunner.engine-${VERSION}.jar -Dsources=target/main/sources/de.sormuras.mainrunner.engine-${VERSION}-sources.jar -Djavadoc=target/main/javadoc/mainrunner-${VERSION}-javadoc.jar
