@@ -11,4 +11,4 @@ jobs:
         with:
           java-version: 11     
       - name: 'Build mainrunner'
-        run: ./build.jsh
+        run: jshell build.jsh
