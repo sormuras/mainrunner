@@ -1,6 +1,6 @@
 workflow "Old flow" {
-  on = "create"
   resolves = ["Setup Java Action"]
+  on = "push"
 }
 
 action "Setup Java Action" {
