@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.spi.ToolProvider;
 
 public class BuildMainrunner {
 
@@ -37,22 +36,10 @@ public class BuildMainrunner {
     var err = new PrintWriter(System.err, true);
     var bach = new Bach(out, err, true);
     var mainrunner = project();
-    var jigsaw = new Bach.Jigsaw(bach, mainrunner);
-    var commands =
-        jigsaw.toCommands(
-            mainrunner.realms.get(0),
-            List.of("de.sormuras.mainrunner.api", "de.sormuras.mainrunner.engine"));
+    var main = mainrunner.realms.get(0);
 
-    for (var command : commands) {
-      System.out.println(command.toCommandLine());
-      var code =
-          ToolProvider.findFirst(command.getName())
-              .orElseThrow()
-              .run(System.out, System.err, command.toStringArray());
-      if (code != 0) {
-        throw new AssertionError("Expected 0, but got: " + code);
-      }
-    }
+    var hydra = new Bach.Hydra(bach, mainrunner, main);
+    hydra.compile(List.of("de.sormuras.mainrunner.api", "de.sormuras.mainrunner.engine"));
 
     deploy(mainrunner);
 
@@ -61,19 +48,27 @@ public class BuildMainrunner {
 
   private static Bach.Project project() {
     var api =
-        new Bach.Project.ModuleUnit(
+        new Bach.Project.MultiReleaseUnit(
             Path.of("src/de.sormuras.mainrunner.api/java-9/module-info.java"),
-            List.of(
+            9,
+            Map.of(
+                8,
                 Path.of("src/de.sormuras.mainrunner.api/main/java-8"),
+                9,
                 Path.of("src/de.sormuras.mainrunner.api/main/java-9")),
             List.of(),
             ModuleDescriptor.newModule("de.sormuras.mainrunner.api").build());
     var engine =
-        new Bach.Project.ModuleUnit(
+        new Bach.Project.MultiReleaseUnit(
             Path.of("src/de.sormuras.mainrunner.engine/java-9/module-info.java"),
-            List.of(
+            9,
+            Map.of(
+                8,
                 Path.of("src/de.sormuras.mainrunner.engine/main/java-8"),
-                Path.of("src/de.sormuras.mainrunner.engine/main/java-9")),
+                9,
+                Path.of("src/de.sormuras.mainrunner.engine/main/java-9"),
+                11,
+                Path.of("src/de.sormuras.mainrunner.engine/main/java-11")),
             List.of(Path.of("src/de.sormuras.mainrunner.engine/main/resources")),
             ModuleDescriptor.newModule("de.sormuras.mainrunner.engine").build());
     var main =
@@ -81,10 +76,7 @@ public class BuildMainrunner {
             "main",
             false,
             11,
-            String.join(
-                File.pathSeparator,
-                String.join(File.separator, "src", "*", "main", "java-8"),
-                String.join(File.separator, "src", "*", "main", "java-9")),
+            String.join(File.separator, "src", "*", "main", "java-9"),
             Map.of(api.descriptor.name(), api, engine.descriptor.name(), engine));
     var library = new Bach.Project.Library(List.of(Path.of("lib")), __ -> null);
     return new Bach.Project(
