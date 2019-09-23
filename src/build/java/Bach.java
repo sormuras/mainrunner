@@ -409,7 +409,7 @@ public class Bach {
           Map<Integer, Path> releases,
           List<Path> resources,
           ModuleDescriptor descriptor) {
-        super(info, List.copyOf(releases.values()), resources, descriptor);
+        super(info, List.copyOf(new TreeMap<>(releases).values()), resources, descriptor);
         this.copyModuleDescriptorToRootRelease = copyModuleDescriptorToRootRelease;
         this.releases = releases;
       }
