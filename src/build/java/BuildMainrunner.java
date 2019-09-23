@@ -95,15 +95,15 @@ public class BuildMainrunner {
     var root = Path.of("src/build/maven/pom.xml");
     lines.add(String.join(" ", maven, "-DpomFile=" + root, "-Dfile=" + root));
     var main = mainrunner.realms.get(0);
+    var version = mainrunner.version;
     for (var unit : main.units.values()) {
-      var name = unit.descriptor.name();
+      var module = unit.descriptor.name();
+      var moduleDashVersion = module + "-" + version;
       var path = Path.of("bin", "realm", main.name);
-      var nameDashVersion = name + "-" + mainrunner.version;
-      var pom = "-DpomFile=" + Path.of("src", name, "maven", "pom.xml");
-      var file = "-Dfile=" + path.resolve("modules").resolve(nameDashVersion + ".jar");
-      var sources =
-          "-Dsources=" + path.resolve("sources").resolve(nameDashVersion + "-sources.jar");
-      var javadoc = "-Djavadoc=" + path.resolve("javadoc").resolve("all-javadoc.jar");
+      var pom = "-DpomFile=" + Path.of("src", module, "maven", "pom.xml");
+      var file = "-Dfile=" + path.resolve("modules").resolve(moduleDashVersion + ".jar");
+      var sources = "-Dsources=" + path.resolve(moduleDashVersion + "-sources.jar");
+      var javadoc = "-Djavadoc=" + path.resolve("mainrunner-" + version + "-javadoc.jar");
       lines.add(String.join(" ", maven, pom, file, sources, javadoc));
     }
     try {
