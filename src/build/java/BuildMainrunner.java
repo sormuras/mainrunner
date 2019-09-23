@@ -34,13 +34,10 @@ public class BuildMainrunner {
     System.out.println("BEGIN");
     var out = new PrintWriter(System.out, true);
     var err = new PrintWriter(System.err, true);
-    var bach = new Bach(out, err, true);
     var mainrunner = project();
-    var main = mainrunner.realms.get(0);
+    var bach = new Bach(out, err, true, mainrunner);
 
-    var hydra = new Bach.Hydra(bach, mainrunner, main);
-    hydra.compile(List.of("de.sormuras.mainrunner.api", "de.sormuras.mainrunner.engine"));
-
+    bach.build();
     deploy(mainrunner);
 
     System.out.println("END.");
@@ -77,6 +74,7 @@ public class BuildMainrunner {
             false,
             11,
             String.join(File.separator, "src", "*", "main", "java-9"),
+            Map.of("hydra", List.of(api.descriptor.name(), engine.descriptor.name())),
             Map.of(api.descriptor.name(), api, engine.descriptor.name(), engine));
     var library = new Bach.Project.Library(List.of(Path.of("lib")), __ -> null);
     return new Bach.Project(
@@ -97,7 +95,7 @@ public class BuildMainrunner {
     var root = Path.of("src/build/maven/pom.xml");
     lines.add(String.join(" ", maven, "-DpomFile=" + root, "-Dfile=" + root));
     var main = mainrunner.realms.get(0);
-    for (var unit : main.modules.values()) {
+    for (var unit : main.units.values()) {
       var name = unit.descriptor.name();
       var path = Path.of("bin", "realm", main.name);
       var nameDashVersion = name + "-" + mainrunner.version;

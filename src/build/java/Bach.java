@@ -1,4 +1,4 @@
-// THIS FILE WAS GENERATED ON 2019-09-22T21:14:47.582251900Z
+// THIS FILE WAS GENERATED ON 2019-09-23T08:28:17.649273800Z
 /*
  * Bach - Java Shell Builder
  * Copyright (C) 2019 Christian Stein
@@ -63,24 +63,12 @@ public class Bach {
   public static String VERSION = "2-ea";
 
   /**
-   * Create new Bach instance with default configuration.
-   *
-   * @return new default Bach instance
-   */
-  public static Bach of() {
-    var out = new PrintWriter(System.out, true);
-    var err = new PrintWriter(System.err, true);
-    var verbose = Boolean.getBoolean("ebug") || "".equals(System.getProperty("ebug"));
-    return new Bach(out, err, verbose);
-  }
-
-  /**
    * Main entry-point.
    *
    * @param args List of API method or tool names.
    */
   public static void main(String... args) {
-    var bach = Bach.of();
+    var bach = new Bach();
     try {
       bach.main(args.length == 0 ? List.of("build") : List.of(args));
     } catch (Throwable throwable) {
@@ -95,11 +83,24 @@ public class Bach {
   private final PrintWriter out, err;
   /** Be verbose. */
   private final boolean verbose;
+  /** Project to be built. */
+  private final Project project;
 
-  public Bach(PrintWriter out, PrintWriter err, boolean verbose) {
+  /** Initialize default instance. */
+  public Bach() {
+    this(
+        new PrintWriter(System.out, true),
+        new PrintWriter(System.err, true),
+        Boolean.getBoolean("ebug") || "".equals(System.getProperty("ebug")),
+        Project.of(Path.of("")));
+  }
+
+  /** Initialize. */
+  public Bach(PrintWriter out, PrintWriter err, boolean verbose, Project project) {
     this.out = Util.requireNonNull(out, "out");
     this.err = Util.requireNonNull(err, "err");
     this.verbose = verbose;
+    this.project = project;
     log("New Bach.java (%s) instance initialized: %s", VERSION, this);
   }
 
@@ -131,7 +132,7 @@ public class Bach {
   }
 
   /** Get the {@code Bach.java} banner. */
-  String banner() {
+  private String banner() {
     var module = getClass().getModule();
     try (var stream = module.getResourceAsStream("de/sormuras/bach/banner.txt")) {
       if (stream == null) {
@@ -169,11 +170,31 @@ public class Bach {
   /** Build. */
   public void build() {
     info();
+
+    var main = project.realms.get(0);
+    if (main.units.isEmpty()) {
+      throw new AssertionError("No module declared in realm " + main.name);
+    }
+
+    var hydras = main.modules.getOrDefault("hydra", List.of());
+    if (!hydras.isEmpty()) {
+      new Hydra(this, project, main).compile(hydras);
+    }
+
+    var jigsaws = main.modules.getOrDefault("jigsaw", List.of());
+    if (!jigsaws.isEmpty()) {
+      new Jigsaw(this, project, main).compile(jigsaws);
+    }
+
+    new Scribe(this, project, main).document();
+
+    // summary(main);
   }
 
   /** Print all "interesting" information. */
   public void info() {
     out.printf("Bach.java (%s)%n", VERSION);
+    out.printf("Project '%s'%n", project.name);
   }
 
   /** Print Bach.java's version to the standard output stream. */
@@ -297,6 +318,19 @@ public class Bach {
   /** Modular project model. */
   public static class Project {
 
+    /** Create default project parsing the passed base directory. */
+    public static Project of(Path baseDirectory) {
+      var main = new Realm("main", false, 0, "src/*/main/java", Map.of(), Map.of());
+      var name = Optional.ofNullable(baseDirectory.toAbsolutePath().getFileName());
+      return new Project(
+          baseDirectory,
+          baseDirectory.resolve("bin"),
+          name.orElse(Path.of("project")).toString().toLowerCase(),
+          Version.parse("0"),
+          new Library(List.of(baseDirectory.resolve("lib")), __ -> null),
+          List.of(main));
+    }
+
     /** Base directory. */
     public final Path baseDirectory;
     /** Target directory. */
@@ -323,6 +357,10 @@ public class Bach {
       this.name = Util.requireNonNull(name, "name");
       this.library = Util.requireNonNull(library, "library");
       this.realms = List.copyOf(Util.requireNonEmpty(realms, "realms"));
+    }
+
+    public Target target(Realm realm) {
+      return new Target(targetDirectory, realm);
     }
 
     /** Manage external 3rd-party modules. */
@@ -387,8 +425,10 @@ public class Bach {
       public final int release;
       /** Module source path specifies where to find input source files for multiple modules. */
       public final String moduleSourcePath;
-      /** Map of declared module source unit. */
-      public final Map<String, ModuleUnit> modules;
+      /** Map of all declared module source unit. */
+      public final Map<String, ModuleUnit> units;
+      /** Map of compiler-specific module names. */
+      public final Map<String, List<String>> modules;
       /** List of required realms. */
       public final List<Realm> realms;
 
@@ -397,14 +437,27 @@ public class Bach {
           boolean preview,
           int release,
           String moduleSourcePath,
-          Map<String, ModuleUnit> modules,
+          Map<String, List<String>> modules,
+          Map<String, ModuleUnit> units,
           Realm... realms) {
         this.name = name;
         this.preview = preview;
         this.release = release;
         this.moduleSourcePath = moduleSourcePath;
         this.modules = Map.copyOf(modules);
+        this.units = Map.copyOf(units);
         this.realms = List.of(realms);
+      }
+    }
+
+    /** Collection of directories and other realm-specific assets. */
+    public static class Target {
+      public final Path directory;
+      public final Path modules;
+
+      private Target(Path projectTargetDirectory, Realm realm) {
+        this.directory = projectTargetDirectory.resolve("realm").resolve(realm.name);
+        this.modules = directory.resolve("modules");
       }
     }
   }
@@ -413,93 +466,93 @@ public class Bach {
 
     private final Bach bach;
     private final Project project;
+    private final Project.Realm realm;
+    private final Project.Target target;
 
-    public Jigsaw(Bach bach, Project project) {
+    public Jigsaw(Bach bach, Project project, Project.Realm realm) {
       this.bach = bach;
       this.project = project;
-      bach.log("New Jigsaw created");
+      this.realm = realm;
+      this.target = project.target(realm);
     }
 
-    public List<Command> toCommands(Project.Realm realm, Collection<String> modules) {
-      bach.log("Generating commands for compiling %s realm: %s", realm.name, modules);
-      var commands = new ArrayList<Command>();
-
-      var targetDirectory = project.targetDirectory.resolve("realm").resolve(realm.name);
-      var modulesDirectory = targetDirectory.resolve("modules");
-      var jigsawDirectory = modulesDirectory.resolve("jigsaw");
-      var classesDirectory = jigsawDirectory.resolve("classes");
-      var javadocDirectory = jigsawDirectory.resolve("javadoc");
-
-      commands.add(
+    public void compile(Collection<String> modules) {
+      bach.log("Compiling %s realm jigsaw modules: %s", realm.name, modules);
+      var classes = target.directory.resolve("jigsaw").resolve("classes");
+      var modulePath = new ArrayList<Path>();
+      if (Files.isDirectory(target.modules)) {
+        modulePath.add(target.modules);
+      }
+      for (var other : realm.realms) {
+        var otherTarget = project.target(other);
+        if (Files.isDirectory(otherTarget.modules)) {
+          modulePath.add(otherTarget.modules);
+        }
+      }
+      modulePath.addAll(project.library.modulePaths);
+      bach.run(
           new Command("javac")
-              .add("-d", classesDirectory)
+              .add("-d", classes)
               .addIff(realm.preview, "--enable-preview")
               .addIff(realm.release != 0, "--release", realm.release)
-              .add("--module-path", project.library.modulePaths)
+              .add("--module-path", modulePath)
               .add("--module-source-path", realm.moduleSourcePath)
               .add("--module-version", project.version)
               .add("--module", String.join(",", modules)));
-
       for (var module : modules) {
-        var unit = realm.modules.get(module);
-        var version = unit.descriptor.version();
-        var file = module + "-" + version.orElse(project.version);
-        var jar = modulesDirectory.resolve(file + ".jar");
-
-        commands.add(
-            new Command("jar")
-                .add("--create")
-                .add("--file", jar)
-                .addIff(bach.verbose(), "--verbose")
-                .addIff("--module-version", version)
-                .addIff("--main-class", unit.descriptor.mainClass())
-                .add("-C", classesDirectory.resolve(module))
-                .add(".")
-                .addEach(unit.resources, (cmd, path) -> cmd.add("-C", path).add(".")));
-
-        if (bach.verbose()) {
-          commands.add(new Command("jar", "--describe-module", "--file", jar));
-          var runtimeModulePath = new ArrayList<>(List.of(modulesDirectory));
-          runtimeModulePath.addAll(project.library.modulePaths);
-          commands.add(
-              new Command("jdeps")
-                  .add("--module-path", runtimeModulePath)
-                  .add("--multi-release", "BASE")
-                  .add("--check", module));
-        }
-
-        commands.add(
-            new Command("jar")
-                .add("--create")
-                .add("--file", targetDirectory.resolve(file + "-sources.jar"))
-                .addIff(bach.verbose(), "--verbose")
-                .add("--no-manifest")
-                .addEach(unit.sources, (cmd, path) -> cmd.add("-C", path).add("."))
-                .addEach(unit.resources, (cmd, path) -> cmd.add("-C", path).add(".")));
+        var unit = realm.units.get(module);
+        jarModule(unit, classes);
+        jarSources(unit);
       }
+    }
 
-      var nameDashVersion = project.name + '-' + project.version;
-      commands.add(
-          new Command("javadoc")
-              .add("-d", javadocDirectory)
-              .add("-encoding", "UTF-8")
-              .addIff(!bach.verbose(), "-quiet")
-              .add("-Xdoclint:-missing")
-              .add("-windowtitle", "'API of " + nameDashVersion + "'")
-              .add("--module-path", project.library.modulePaths)
-              .add("--module-source-path", realm.moduleSourcePath)
-              .add("--module", String.join(",", modules)));
+    private void jarModule(Project.ModuleUnit unit, Path classes) {
+      var module = unit.descriptor.name();
+      var version = unit.descriptor.version();
+      var file = module + "-" + version.orElse(project.version);
+      var jar = Util.treeCreate(target.modules).resolve(file + ".jar");
 
-      commands.add(
+      bach.run(
           new Command("jar")
               .add("--create")
-              .add("--file", targetDirectory.resolve(nameDashVersion + "-javadoc.jar"))
+              .add("--file", jar)
+              .addIff(bach.verbose(), "--verbose")
+              .addIff("--module-version", version)
+              .addIff("--main-class", unit.descriptor.mainClass())
+              .add("-C", classes.resolve(module))
+              .add(".")
+              .addEach(unit.resources, (cmd, path) -> cmd.add("-C", path).add(".")));
+
+      if (bach.verbose()) {
+        bach.run(new Command("jar", "--describe-module", "--file", jar));
+        var runtimeModulePath = new ArrayList<>(List.of(target.modules));
+        for (var other : realm.realms) {
+          var otherTarget = project.target(other);
+          if (Files.isDirectory(otherTarget.modules)) {
+            runtimeModulePath.add(otherTarget.modules);
+          }
+        }
+        runtimeModulePath.addAll(project.library.modulePaths);
+        bach.run(
+            new Command("jdeps")
+                .add("--module-path", runtimeModulePath)
+                .add("--multi-release", "BASE")
+                .add("--check", module));
+      }
+    }
+
+    private void jarSources(Project.ModuleUnit unit) {
+      var version = unit.descriptor.version();
+      var file = unit.descriptor.name() + "-" + version.orElse(project.version);
+
+      bach.run(
+          new Command("jar")
+              .add("--create")
+              .add("--file", target.directory.resolve(file + "-sources.jar"))
               .addIff(bach.verbose(), "--verbose")
               .add("--no-manifest")
-              .add("-C", javadocDirectory)
-              .add("."));
-
-      return List.copyOf(commands);
+              .addEach(unit.sources, (cmd, path) -> cmd.add("-C", path).add("."))
+              .addEach(unit.resources, (cmd, path) -> cmd.add("-C", path).add(".")));
     }
   }
 
@@ -509,26 +562,20 @@ public class Bach {
     private final Bach bach;
     private final Project project;
     private final Project.Realm realm;
-
-    private final Path modulesDirectory;
-    private final Path classesDirectory;
+    private final Project.Target target;
 
     public Hydra(Bach bach, Project project, Project.Realm realm) {
       this.bach = bach;
       this.project = project;
       this.realm = realm;
-
-      var targetDirectory = project.targetDirectory.resolve("realm").resolve(realm.name);
-      this.modulesDirectory = targetDirectory.resolve("modules");
-      var hydraDirectory = modulesDirectory.resolve("hydra");
-      this.classesDirectory = hydraDirectory.resolve("classes");
+      this.target = project.target(realm);
     }
 
     public void compile(Collection<String> modules) {
       bach.log(
           "Generating commands for %s realm multi-release modules(s): %s", realm.name, modules);
       for (var module : modules) {
-        var unit = (Project.MultiReleaseUnit) realm.modules.get(module);
+        var unit = (Project.MultiReleaseUnit) realm.units.get(module);
         compile(unit);
       }
     }
@@ -537,19 +584,20 @@ public class Bach {
       var sorted = new TreeSet<>(unit.releases.keySet());
       int base = sorted.first();
       bach.log("Base feature release number is: %d", base);
+      var classes = target.directory.resolve("hydra").resolve("classes");
       for (int release : sorted) {
-        compileRelease(unit, base, release);
+        compileRelease(unit, base, release, classes);
       }
-      jarModule(unit);
+      jarModule(unit, classes);
       jarSources(unit);
     }
 
-    private void compileRelease(Project.MultiReleaseUnit unit, int base, int release) {
-      var source = unit.releases.get(release);
+    private void compileRelease(
+        Project.MultiReleaseUnit unit, int base, int release, Path classes) {
       var module = unit.descriptor.name();
-      var baseClasses =
-          classesDirectory.resolve(unit.releases.get(base).getFileName()).resolve(module);
-      var destination = classesDirectory.resolve(source.getFileName());
+      var source = unit.releases.get(release);
+      var destination = classes.resolve(source.getFileName());
+      var baseClasses = classes.resolve(unit.releases.get(base).getFileName()).resolve(module);
       var javac = new Command("javac").addIff(false, "-verbose").add("--release", release);
       if (Util.isModuleInfo(source.resolve("module-info.java"))) {
         javac.add("-d", destination);
@@ -566,8 +614,8 @@ public class Bach {
         if (base != release) {
           classPath.add(baseClasses);
         }
-        if (Files.isDirectory(modulesDirectory)) {
-          classPath.addAll(Util.list(modulesDirectory, Util::isJarFile));
+        if (Files.isDirectory(target.modules)) {
+          classPath.addAll(Util.list(target.modules, Util::isJarFile));
         }
         for (var path : Util.findExisting(project.library.modulePaths)) {
           if (Util.isJarFile(path)) {
@@ -582,30 +630,30 @@ public class Bach {
       bach.run(javac);
     }
 
-    private void jarModule(Project.MultiReleaseUnit unit) {
+    private void jarModule(Project.MultiReleaseUnit unit, Path classes) {
       var releases = new ArrayDeque<>(new TreeSet<>(unit.releases.keySet()));
       var module = unit.descriptor.name();
       var version = unit.descriptor.version();
       var file = module + "-" + version.orElse(project.version);
-      var modularJar = modulesDirectory.resolve(file + ".jar");
+      var modularJar = Util.treeCreate(target.modules).resolve(file + ".jar");
       var base = unit.releases.get(releases.pop()).getFileName();
       var jar =
           new Command("jar")
               .add("--create")
               .add("--file", modularJar)
               .addIff(bach.verbose(), "--verbose")
-              .add("-C", classesDirectory.resolve(base).resolve(module))
+              .add("-C", classes.resolve(base).resolve(module))
               .add(".")
               .addEach(unit.resources, (cmd, path) -> cmd.add("-C", path).add("."));
       for (var release : releases) {
         var path = unit.releases.get(release).getFileName();
-        var classes = classesDirectory.resolve(path).resolve(module);
+        var released = classes.resolve(path).resolve(module);
         if (unit.copyModuleDescriptorToRootRelease == release) {
-          jar.add("-C", classes);
+          jar.add("-C", released);
           jar.add("module-info.class");
         }
         jar.add("--release", release);
-        jar.add("-C", classes);
+        jar.add("-C", released);
         jar.add(".");
       }
       bach.run(jar);
@@ -622,7 +670,7 @@ public class Bach {
       var jar =
           new Command("jar")
               .add("--create")
-              .add("--file", modulesDirectory.resolve(file + "-sources.jar"))
+              .add("--file", target.directory.resolve(file + "-sources.jar"))
               .addIff(bach.verbose(), "--verbose")
               .add("--no-manifest")
               .add("-C", releases.removeFirst().getValue())
@@ -634,6 +682,55 @@ public class Bach {
         jar.add(".");
       }
       bach.run(jar);
+    }
+  }
+
+  /** Create API documentation. */
+  public static class Scribe {
+
+    private final Bach bach;
+    private final Project project;
+    private final Project.Realm realm;
+    private final Project.Target target;
+
+    public Scribe(Bach bach, Project project, Project.Realm realm) {
+      this.bach = bach;
+      this.project = project;
+      this.realm = realm;
+      this.target = project.target(realm);
+    }
+
+    public void document() {
+      document(new TreeSet<>(realm.units.keySet()));
+    }
+
+    public void document(Collection<String> modules) {
+      bach.log("Compiling %s realm's documentation: %s", realm.name, modules);
+      var destination = target.directory.resolve("javadoc");
+      var javadoc =
+          new Command("javadoc")
+              .add("-d", destination)
+              .add("-encoding", "UTF-8")
+              .addIff(!bach.verbose(), "-quiet")
+              .add("-Xdoclint:-missing")
+              .add("--module-path", project.library.modulePaths)
+              .add("--module-source-path", realm.moduleSourcePath);
+      for (var module : realm.modules.getOrDefault("hydra", List.of())) {
+        var base = realm.units.get(module).sources.get(0);
+        javadoc.add("--patch-module", module + "=" + base);
+      }
+      javadoc.add("--module", String.join(",", modules));
+      bach.run(javadoc);
+
+      var nameDashVersion = project.name + '-' + project.version;
+      bach.run(
+          new Command("jar")
+              .add("--create")
+              .add("--file", target.directory.resolve(nameDashVersion + "-javadoc.jar"))
+              .addIff(bach.verbose(), "--verbose")
+              .add("--no-manifest")
+              .add("-C", destination)
+              .add("."));
     }
   }
 
