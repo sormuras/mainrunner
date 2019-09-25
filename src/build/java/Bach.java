@@ -1,4 +1,4 @@
-// THIS FILE WAS GENERATED ON 2019-09-23T08:28:17.649273800Z
+// THIS FILE WAS GENERATED ON 2019-09-25T11:20:52.416067300Z
 /*
  * Bach - Java Shell Builder
  * Copyright (C) 2019 Christian Stein
@@ -27,20 +27,32 @@ import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.module.ModuleDescriptor.Version;
 import java.lang.module.ModuleDescriptor;
+import java.lang.module.ModuleDescriptor.Version;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReference;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.FileTime;
+import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
@@ -57,6 +69,7 @@ import java.util.regex.Pattern;
 import java.util.spi.ToolProvider;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.lang.model.SourceVersion;
 
 public class Bach {
 
@@ -171,6 +184,8 @@ public class Bach {
   public void build() {
     info();
 
+    resolve();
+
     var main = project.realms.get(0);
     if (main.units.isEmpty()) {
       throw new AssertionError("No module declared in realm " + main.name);
@@ -195,6 +210,11 @@ public class Bach {
   public void info() {
     out.printf("Bach.java (%s)%n", VERSION);
     out.printf("Project '%s'%n", project.name);
+  }
+
+  /** Resolve missing modules. */
+  public void resolve() {
+    new Resolver(this).resolve();
   }
 
   /** Print Bach.java's version to the standard output stream. */
@@ -327,7 +347,7 @@ public class Bach {
           baseDirectory.resolve("bin"),
           name.orElse(Path.of("project")).toString().toLowerCase(),
           Version.parse("0"),
-          new Library(List.of(baseDirectory.resolve("lib")), __ -> null),
+          new Library(baseDirectory.resolve("lib")),
           List.of(main));
     }
 
@@ -369,10 +389,35 @@ public class Bach {
       public final List<Path> modulePaths;
       /** Map external 3rd-party module names to their {@code URI}s. */
       public final Function<String, URI> moduleMapper;
+      /** Map external 3rd-party module names to their Maven repository. */
+      public final Function<String, URI> mavenRepositoryMapper;
+      /**
+       * Map external 3rd-party module names to their colon-separated Maven Group and Artifact ID.
+       */
+      public final UnaryOperator<String> mavenGroupColonArtifactMapper;
+      /** Map external 3rd-party module names to their Maven version. */
+      public final UnaryOperator<String> mavenVersionMapper;
 
-      public Library(List<Path> modulePaths, Function<String, URI> moduleMapper) {
+      public Library(Path lib) {
+        this(
+            List.of(lib),
+            UnmappedModuleException::throwForURI,
+            __ -> URI.create("https://repo1.maven.org/maven2"),
+            UnmappedModuleException::throwForString,
+            UnmappedModuleException::throwForString);
+      }
+
+      public Library(
+          List<Path> modulePaths,
+          Function<String, URI> moduleMapper,
+          Function<String, URI> mavenRepositoryMapper,
+          UnaryOperator<String> mavenGroupColonArtifactMapper,
+          UnaryOperator<String> mavenVersionMapper) {
         this.modulePaths = List.copyOf(Util.requireNonEmpty(modulePaths, "modulePaths"));
         this.moduleMapper = moduleMapper;
+        this.mavenRepositoryMapper = mavenRepositoryMapper;
+        this.mavenGroupColonArtifactMapper = mavenGroupColonArtifactMapper;
+        this.mavenVersionMapper = mavenVersionMapper;
       }
     }
 
@@ -685,6 +730,293 @@ public class Bach {
     }
   }
 
+  /** 3rd-party module resolver. */
+  public static class Resolver {
+
+    /** Command-line argument factory. */
+    public static Scanner scan(Collection<String> declaredModules, Iterable<String> requires) {
+      var map = new TreeMap<String, Set<ModuleDescriptor.Version>>();
+      for (var string : requires) {
+        var versionMarkerIndex = string.indexOf('@');
+        var any = versionMarkerIndex == -1;
+        var module = any ? string : string.substring(0, versionMarkerIndex);
+        var version =
+            any ? null : ModuleDescriptor.Version.parse(string.substring(versionMarkerIndex + 1));
+        map.merge(module, any ? Set.of() : Set.of(version), Util::concat);
+      }
+      return new Scanner(new TreeSet<>(declaredModules), map);
+    }
+
+    public static Scanner scan(ModuleFinder finder) {
+      var declaredModules = new TreeSet<String>();
+      var requiredModules = new TreeMap<String, Set<ModuleDescriptor.Version>>();
+      finder.findAll().stream()
+          .map(ModuleReference::descriptor)
+          .peek(descriptor -> declaredModules.add(descriptor.name()))
+          .map(ModuleDescriptor::requires)
+          .flatMap(Set::stream)
+          .filter(r -> !r.modifiers().contains(ModuleDescriptor.Requires.Modifier.MANDATED))
+          .filter(r -> !r.modifiers().contains(ModuleDescriptor.Requires.Modifier.STATIC))
+          .distinct()
+          .forEach(
+              requires ->
+                  requiredModules.merge(
+                      requires.name(),
+                      requires.compiledVersion().map(Set::of).orElse(Set.of()),
+                      Util::concat));
+      return new Scanner(declaredModules, requiredModules);
+    }
+
+    public static Scanner scan(String... sources) {
+      var declaredModules = new TreeSet<String>();
+      var map = new TreeMap<String, Set<ModuleDescriptor.Version>>();
+      for (var source : sources) {
+        var nameMatcher = Scanner.MODULE_NAME_PATTERN.matcher(source);
+        if (!nameMatcher.find()) {
+          throw new IllegalArgumentException(
+              "Expected module-info.java source, but got: " + source);
+        }
+        declaredModules.add(nameMatcher.group(1).trim());
+        var requiresMatcher = Scanner.MODULE_REQUIRES_PATTERN.matcher(source);
+        while (requiresMatcher.find()) {
+          var name = requiresMatcher.group(1);
+          var version = requiresMatcher.group(2);
+          map.merge(
+              name,
+              version == null ? Set.of() : Set.of(ModuleDescriptor.Version.parse(version)),
+              Util::concat);
+        }
+      }
+      return new Scanner(declaredModules, map);
+    }
+
+    public static Scanner scan(Collection<Path> paths) {
+      var sources = new ArrayList<String>();
+      for (var path : paths) {
+        if (Files.isDirectory(path)) {
+          path = path.resolve("module-info.java");
+        }
+        try {
+          sources.add(Files.readString(path));
+        } catch (IOException e) {
+          throw new UncheckedIOException("find or read failed: " + path, e);
+        }
+      }
+      return scan(sources.toArray(new String[0]));
+    }
+
+    private final Bach bach;
+    private final Project project;
+
+    Resolver(Bach bach) {
+      this.bach = bach;
+      this.project = bach.project;
+    }
+
+    public void resolve() {
+      var entries = project.library.modulePaths.toArray(Path[]::new);
+      var library = scan(ModuleFinder.of(entries));
+      bach.log("Library of -> %s", project.library.modulePaths);
+      bach.log("  modules  -> " + library.modules);
+      bach.log("  requires -> " + library.requires);
+
+      var infos = new ArrayList<Path>();
+      for (var realm : project.realms) {
+        for (var unit : realm.units.values()) {
+          infos.add(unit.info);
+        }
+      }
+      var sources = scan(infos);
+      bach.log("Library of -> %s", infos);
+      bach.log("  modules  -> " + sources.modules);
+      bach.log("  requires -> " + sources.requires);
+
+      var systems = scan(ModuleFinder.ofSystem());
+      bach.log("System contains %d modules.", systems.modules.size());
+
+      var missing = new TreeMap<String, Set<ModuleDescriptor.Version>>();
+      missing.putAll(sources.requires);
+      missing.putAll(library.requires);
+      sources.getDeclaredModules().forEach(missing::remove);
+      library.getDeclaredModules().forEach(missing::remove);
+      systems.getDeclaredModules().forEach(missing::remove);
+      if (missing.isEmpty()) {
+        return;
+      }
+
+      var downloader = new Util.Downloader(bach.out, bach.err);
+      var worker = new Scanner.Worker(project, downloader);
+      do {
+        bach.log("Loading missing modules: %s", missing);
+        var items = new ArrayList<Util.Downloader.Item>();
+        for (var entry : missing.entrySet()) {
+          var module = entry.getKey();
+          var versions = entry.getValue();
+          items.add(worker.toTransferItem(module, versions));
+        }
+        var lib = project.library.modulePaths.get(0);
+        downloader.download(lib, items);
+        library = scan(ModuleFinder.of(entries));
+        missing = new TreeMap<>(library.requires);
+        library.getDeclaredModules().forEach(missing::remove);
+        systems.getDeclaredModules().forEach(missing::remove);
+      } while (!missing.isEmpty());
+    }
+
+    /** Module Scanner. */
+    public static class Scanner {
+
+      private static final Pattern MODULE_NAME_PATTERN = Pattern.compile("(?:module)\\s+([\\w.]+)");
+      private static final Pattern MODULE_REQUIRES_PATTERN =
+          Pattern.compile(
+              "(?:requires)" // key word
+                  + "(?:\\s+[\\w.]+)?" // optional modifiers
+                  + "\\s+([\\w.]+)" // module name
+                  + "(?:\\s*/\\*\\s*([\\w.\\-+]+)\\s*\\*/\\s*)?" // optional '/*' version '*/'
+                  + ";"); // end marker
+
+      private final Set<String> modules;
+      final Map<String, Set<ModuleDescriptor.Version>> requires;
+
+      public Scanner(Set<String> modules, Map<String, Set<ModuleDescriptor.Version>> requires) {
+        this.modules = modules;
+        this.requires = requires;
+      }
+
+      public Set<String> getDeclaredModules() {
+        return modules;
+      }
+
+      public Set<String> getRequiredModules() {
+        return requires.keySet();
+      }
+
+      public Optional<ModuleDescriptor.Version> getRequiredVersion(String requiredModule) {
+        var versions = requires.get(requiredModule);
+        if (versions == null) {
+          throw new NoSuchElementException("Module " + requiredModule + " is not mapped");
+        }
+        if (versions.size() > 1) {
+          throw new IllegalStateException(
+              "Multiple versions: " + requiredModule + " -> " + versions);
+        }
+        return versions.stream().findFirst();
+      }
+
+      static class Worker {
+
+        static class Lookup {
+
+          final String name;
+          final Properties properties;
+          final Set<Pattern> patterns;
+          final UnaryOperator<String> custom;
+
+          Lookup(Util.Downloader downloader, Path lib, String name, UnaryOperator<String> custom) {
+            this.name = name;
+            var uri = "https://github.com/sormuras/modules/raw/master/" + name;
+            var modules = Path.of(System.getProperty("user.home")).resolve(".bach/modules");
+            try {
+              Files.createDirectories(modules);
+            } catch (IOException e) {
+              throw new UncheckedIOException("Creating directories failed: " + modules, e);
+            }
+            var defaultModules = downloader.download(URI.create(uri), modules.resolve(name));
+            var defaults = Util.load(new Properties(), defaultModules);
+            this.properties = Util.load(new Properties(defaults), lib.resolve(name));
+            this.patterns =
+                properties.keySet().stream()
+                    .map(Object::toString)
+                    .filter(key -> !SourceVersion.isName(key))
+                    .map(Pattern::compile)
+                    .collect(Collectors.toSet());
+            this.custom = custom;
+          }
+
+          String get(String key) {
+            try {
+              return custom.apply(key);
+            } catch (UnmappedModuleException e) {
+              // fall-through
+            }
+            var value = properties.getProperty(key);
+            if (value != null) {
+              return value;
+            }
+            for (var pattern : patterns) {
+              if (pattern.matcher(key).matches()) {
+                return properties.getProperty(pattern.pattern());
+              }
+            }
+            throw new IllegalStateException("No lookup value mapped for: " + key);
+          }
+
+          @Override
+          public String toString() {
+            var size = properties.size();
+            var names = properties.stringPropertyNames().size();
+            return String.format(
+                "module properties {name: %s, size: %d, names: %d}", name, size, names);
+          }
+        }
+
+        final Project project;
+        final Properties moduleUri;
+        final Lookup moduleMaven, moduleVersion;
+
+        Worker(Project project, Util.Downloader transfer) {
+          this.project = project;
+          var lib = project.library.modulePaths.get(0);
+          this.moduleUri = Util.load(new Properties(), lib.resolve("module-uri.properties"));
+          this.moduleMaven =
+              new Lookup(
+                  transfer,
+                  lib,
+                  "module-maven.properties",
+                  project.library.mavenGroupColonArtifactMapper);
+          this.moduleVersion =
+              new Lookup(
+                  transfer, lib, "module-version.properties", project.library.mavenVersionMapper);
+        }
+
+        private URI getModuleUri(String module) {
+          try {
+            return project.library.moduleMapper.apply(module);
+          } catch (UnmappedModuleException e) {
+            var uri = moduleUri.getProperty(module);
+            if (uri == null) {
+              return null;
+            }
+            return URI.create(uri);
+          }
+        }
+
+        Util.Downloader.Item toTransferItem(String module, Set<ModuleDescriptor.Version> set) {
+          var uri = getModuleUri(module);
+          if (uri != null) {
+            var file = Util.findFileName(uri);
+            var version = Util.findVersion(file.orElse(""));
+            return Util.Downloader.Item.of(
+                uri, module + version.map(v -> '-' + v).orElse("") + ".jar");
+          }
+          var repository = project.library.mavenRepositoryMapper.apply(module);
+          var maven = moduleMaven.get(module).split(":");
+          var group = maven[0];
+          var artifact = maven[1];
+          var version = Util.singleton(set).map(Object::toString).orElse(moduleVersion.get(module));
+          var mappedUri = toUri(repository.toString(), group, artifact, version);
+          return Util.Downloader.Item.of(mappedUri, module + '-' + version + ".jar");
+        }
+
+        private URI toUri(String repository, String group, String artifact, String version) {
+          var file = artifact + '-' + version + ".jar";
+          var uri = String.join("/", repository, group.replace('.', '/'), artifact, version, file);
+          return URI.create(uri);
+        }
+      }
+    }
+  }
+
   /** Create API documentation. */
   public static class Scribe {
 
@@ -707,20 +1039,15 @@ public class Bach {
     public void document(Collection<String> modules) {
       bach.log("Compiling %s realm's documentation: %s", realm.name, modules);
       var destination = target.directory.resolve("javadoc");
-      var javadoc =
+      bach.run(
           new Command("javadoc")
               .add("-d", destination)
               .add("-encoding", "UTF-8")
               .addIff(!bach.verbose(), "-quiet")
               .add("-Xdoclint:-missing")
               .add("--module-path", project.library.modulePaths)
-              .add("--module-source-path", realm.moduleSourcePath);
-      for (var module : realm.modules.getOrDefault("hydra", List.of())) {
-        var base = realm.units.get(module).sources.get(0);
-        javadoc.add("--patch-module", module + "=" + base);
-      }
-      javadoc.add("--module", String.join(",", modules));
-      bach.run(javadoc);
+              .add("--module-source-path", realm.moduleSourcePath)
+              .add("--module", String.join(",", modules)));
 
       var nameDashVersion = project.name + '-' + project.version;
       bach.run(
@@ -988,6 +1315,118 @@ public class Bach {
       } catch (IOException e) {
         throw new UncheckedIOException("tree delete failed: " + root, e);
       }
+    }
+
+    /** File transfer utility. */
+    static class Downloader {
+
+      static class Item {
+
+        static Item of(URI uri, String file) {
+          return new Item(uri, file);
+        }
+
+        private final URI uri;
+        private final String file;
+
+        private Item(URI uri, String file) {
+          this.uri = uri;
+          this.file = file;
+        }
+      }
+
+      private final PrintWriter out, err;
+      private final HttpClient client;
+
+      Downloader(PrintWriter out, PrintWriter err) {
+        this(out, err, HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build());
+      }
+
+      private Downloader(PrintWriter out, PrintWriter err, HttpClient client) {
+        this.out = out;
+        this.err = err;
+        this.client = client;
+      }
+
+      Set<Path> download(Path directory, Collection<Item> items) {
+        Util.treeCreate(directory);
+        return items.stream()
+            .parallel()
+            .map(item -> download(item.uri, directory.resolve(item.file)))
+            .collect(Collectors.toCollection(TreeSet::new));
+      }
+
+      Path download(URI uri, Path path) {
+        if ("file".equals(uri.getScheme())) {
+          try {
+            return Files.copy(Path.of(uri), path, StandardCopyOption.REPLACE_EXISTING);
+          } catch (Exception e) {
+            throw new IllegalArgumentException("copy file failed:" + uri, e);
+          }
+        }
+        var request = HttpRequest.newBuilder(uri).GET();
+        if (Files.exists(path)) {
+          try {
+            var etagBytes = (byte[]) Files.getAttribute(path, "user:etag");
+            var etag = StandardCharsets.UTF_8.decode(ByteBuffer.wrap(etagBytes)).toString();
+            request.setHeader("If-None-Match", etag);
+          } catch (Exception e) {
+            err.println("Couldn't get 'user:etag' file attribute: " + e);
+          }
+        }
+        try {
+          var handler = HttpResponse.BodyHandlers.ofFile(path);
+          var response = client.send(request.build(), handler);
+          if (response.statusCode() == 200) {
+            var etagHeader = response.headers().firstValue("etag");
+            if (etagHeader.isPresent()) {
+              try {
+                var etag = etagHeader.get();
+                Files.setAttribute(path, "user:etag", StandardCharsets.UTF_8.encode(etag));
+              } catch (Exception e) {
+                err.println("Couldn't set 'user:etag' file attribute: " + e);
+              }
+            }
+            var lastModifiedHeader = response.headers().firstValue("last-modified");
+            if (lastModifiedHeader.isPresent()) {
+              try {
+                var format = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
+                var millis = format.parse(lastModifiedHeader.get()).getTime(); // 0 means "unknown"
+                var fileTime =
+                    FileTime.fromMillis(millis == 0 ? System.currentTimeMillis() : millis);
+                Files.setLastModifiedTime(path, fileTime);
+              } catch (Exception e) {
+                err.println("Couldn't set last modified file attribute: " + e);
+              }
+            }
+            synchronized (out) {
+              out.println(path + " <- " + uri);
+            }
+          }
+        } catch (IOException | InterruptedException e) {
+          err.println("Failed to load: " + uri + " -> " + e);
+          e.printStackTrace(err);
+        }
+        return path;
+      }
+    }
+  }
+
+  /** Unchecked exception thrown when a module name is not mapped. */
+  public static class UnmappedModuleException extends IllegalStateException {
+
+    public static String throwForString(String module) {
+      throw new UnmappedModuleException(module);
+    }
+
+    public static URI throwForURI(String module) {
+      throw new UnmappedModuleException(module);
+    }
+
+    private static final long serialVersionUID = 6985648789039587477L;
+
+    public UnmappedModuleException(String module) {
+      super("Module " + module + " is not mapped");
     }
   }
 }
