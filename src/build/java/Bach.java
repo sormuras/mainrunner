@@ -866,7 +866,11 @@ public class Bach {
     /** Module Scanner. */
     public static class Scanner {
 
-      private static final Pattern MODULE_NAME_PATTERN = Pattern.compile("(?:module)\\s+([\\w.]+)");
+      private static final Pattern MODULE_NAME_PATTERN =
+          Pattern.compile(
+              "(?:module)" // key word
+                  + "\\s+([\\w.]+)" // module name
+                  + "\\s+\\{"); // end marker
       private static final Pattern MODULE_REQUIRES_PATTERN =
           Pattern.compile(
               "(?:requires)" // key word
