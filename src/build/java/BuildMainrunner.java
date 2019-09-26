@@ -46,7 +46,7 @@ public class BuildMainrunner {
   private static Bach.Project project() {
     var api =
         new Bach.Project.MultiReleaseUnit(
-            Path.of("src/de.sormuras.mainrunner.api/java-9/module-info.java"),
+            Path.of("src/de.sormuras.mainrunner.api/main/java-9/module-info.java"),
             9,
             Map.of(
                 8,
@@ -57,7 +57,7 @@ public class BuildMainrunner {
             ModuleDescriptor.newModule("de.sormuras.mainrunner.api").build());
     var engine =
         new Bach.Project.MultiReleaseUnit(
-            Path.of("src/de.sormuras.mainrunner.engine/java-9/module-info.java"),
+            Path.of("src/de.sormuras.mainrunner.engine/main/java-9/module-info.java"),
             9,
             Map.of(
                 8,
@@ -76,7 +76,7 @@ public class BuildMainrunner {
             String.join(File.separator, "src", "*", "main", "java-9"),
             Map.of("hydra", List.of(api.descriptor.name(), engine.descriptor.name())),
             Map.of(api.descriptor.name(), api, engine.descriptor.name(), engine));
-    var library = new Bach.Project.Library(List.of(Path.of("lib")), __ -> null);
+    var library = new Bach.Project.Library(Path.of("lib"));
     return new Bach.Project(
         Path.of(""),
         Path.of("bin"),
