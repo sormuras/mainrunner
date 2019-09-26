@@ -76,6 +76,28 @@ public class BuildMainrunner {
             String.join(File.separator, "src", "*", "main", "java-9"),
             Map.of("hydra", List.of(api.descriptor.name(), engine.descriptor.name())),
             Map.of(api.descriptor.name(), api, engine.descriptor.name(), engine));
+
+    var programs =
+        new Bach.Project.ModuleUnit(
+            Path.of("src/programs/test/java/module-info.java"),
+            List.of(Path.of("src/programs/test/java")),
+            List.of(), // resources
+            ModuleDescriptor.newOpenModule("programs").build());
+    var integration =
+        new Bach.Project.ModuleUnit(
+            Path.of("src/integration/test/java/module-info.java"),
+            List.of(Path.of("src/integration/test/java")),
+            List.of(), // resources
+            ModuleDescriptor.newOpenModule("integration").build());
+    var test =
+        new Bach.Project.Realm(
+            "main",
+            false,
+            0,
+            String.join(File.separator, "src", "*", "test", "java"),
+            Map.of("jigsaw", List.of("programs", "integration")),
+            Map.of("programs", programs, "integration", integration));
+
     var library = new Bach.Project.Library(Path.of("lib"));
     return new Bach.Project(
         Path.of(""),
@@ -83,7 +105,7 @@ public class BuildMainrunner {
         "mainrunner",
         ModuleDescriptor.Version.parse("2.1.4"),
         library,
-        List.of(main));
+        List.of(main, test));
   }
 
   private static void deploy(Bach.Project mainrunner) {
