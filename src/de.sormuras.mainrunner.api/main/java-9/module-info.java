@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/** Defines the optional API for customizing Java program runs. */
 module de.sormuras.mainrunner.api {
   exports de.sormuras.mainrunner.api;
 }
