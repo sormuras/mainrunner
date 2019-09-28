@@ -46,18 +46,19 @@ public class BuildMainrunner {
   private static Bach.Project project() {
     var api =
         new Bach.Project.MultiReleaseUnit(
-            Path.of("src/de.sormuras.mainrunner.api/main/java-9/module-info.java"),
+            Bach.Project.ModuleInfoReference.of(
+                Path.of("src/de.sormuras.mainrunner.api/main/java-9/module-info.java")),
             9,
             Map.of(
                 8,
                 Path.of("src/de.sormuras.mainrunner.api/main/java-8"),
                 9,
                 Path.of("src/de.sormuras.mainrunner.api/main/java-9")),
-            List.of(),
-            ModuleDescriptor.newModule("de.sormuras.mainrunner.api").build());
+            List.of());
     var engine =
         new Bach.Project.MultiReleaseUnit(
-            Path.of("src/de.sormuras.mainrunner.engine/main/java-9/module-info.java"),
+            Bach.Project.ModuleInfoReference.of(
+                Path.of("src/de.sormuras.mainrunner.engine/main/java-9/module-info.java")),
             9,
             Map.of(
                 8,
@@ -66,37 +67,33 @@ public class BuildMainrunner {
                 Path.of("src/de.sormuras.mainrunner.engine/main/java-9"),
                 11,
                 Path.of("src/de.sormuras.mainrunner.engine/main/java-11")),
-            List.of(Path.of("src/de.sormuras.mainrunner.engine/main/resources")),
-            ModuleDescriptor.newModule("de.sormuras.mainrunner.engine").build());
+            List.of(Path.of("src/de.sormuras.mainrunner.engine/main/resources")));
     var main =
         new Bach.Project.Realm(
             "main",
             false,
             11,
             String.join(File.separator, "src", "*", "main", "java-9"),
-            Map.of("hydra", List.of(api.descriptor.name(), engine.descriptor.name())),
-            Map.of(api.descriptor.name(), api, engine.descriptor.name(), engine));
+            List.of(api, engine));
 
     var programs =
-        new Bach.Project.ModuleUnit(
-            Path.of("src/programs/test/java/module-info.java"),
+        new Bach.Project.ModuleSourceUnit(
+            Bach.Project.ModuleInfoReference.of(Path.of("src/programs/test/java/module-info.java")),
             List.of(Path.of("src/programs/test/java")),
-            List.of(), // resources
-            ModuleDescriptor.newOpenModule("programs").build());
+            List.of());
     var integration =
-        new Bach.Project.ModuleUnit(
-            Path.of("src/integration/test/java/module-info.java"),
+        new Bach.Project.ModuleSourceUnit(
+            Bach.Project.ModuleInfoReference.of(
+                Path.of("src/integration/test/java/module-info.java")),
             List.of(Path.of("src/integration/test/java")),
-            List.of(), // resources
-            ModuleDescriptor.newOpenModule("integration").build());
+            List.of());
     var test =
         new Bach.Project.Realm(
             "main",
             false,
             0,
             String.join(File.separator, "src", "*", "test", "java"),
-            Map.of("jigsaw", List.of("programs", "integration")),
-            Map.of("programs", programs, "integration", integration));
+            List.of(programs, integration));
 
     var library = new Bach.Project.Library(Path.of("lib"));
     return new Bach.Project(
@@ -118,8 +115,8 @@ public class BuildMainrunner {
     lines.add(String.join(" ", maven, "-DpomFile=" + root, "-Dfile=" + root));
     var main = mainrunner.realms.get(0);
     var version = mainrunner.version;
-    for (var unit : main.units.values()) {
-      var module = unit.descriptor.name();
+    for (var unit : main.units) {
+      var module = unit.name();
       var moduleDashVersion = module + "-" + version;
       var path = Path.of("bin", "realm", main.name);
       var pom = "-DpomFile=" + Path.of("src", module, "maven", "pom.xml");
