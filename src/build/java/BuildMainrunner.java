@@ -89,11 +89,12 @@ public class BuildMainrunner {
             List.of());
     var test =
         new Bach.Project.Realm(
-            "main",
+            "test",
             false,
             0,
             String.join(File.separator, "src", "*", "test", "java"),
-            List.of(programs, integration));
+            List.of(programs, integration),
+            main);
 
     var library = new Bach.Project.Library(Path.of("lib"));
     return new Bach.Project(
