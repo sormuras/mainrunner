@@ -101,7 +101,7 @@ public class BuildMainrunner {
         Path.of(""),
         Path.of("bin"),
         "mainrunner",
-        ModuleDescriptor.Version.parse("2.1.4"),
+        ModuleDescriptor.Version.parse("2.1.5"),
         library,
         List.of(main, test));
   }
