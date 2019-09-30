@@ -112,8 +112,6 @@ public class BuildMainrunner {
     var url = "-Durl=https://api.bintray.com/maven/sormuras/maven/mainrunner/;publish=0"; // 1
     var maven = String.join(" ", "call", "mvn", plugin, repository, url);
     var lines = new ArrayList<String>();
-    var root = Path.of("src/build/maven/pom.xml");
-    lines.add(String.join(" ", maven, "-DpomFile=" + root, "-Dfile=" + root));
     var main = mainrunner.realms.get(0);
     var version = mainrunner.version;
     for (var unit : main.units) {
