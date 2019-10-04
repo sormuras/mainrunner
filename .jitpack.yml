@@ -1,5 +1,5 @@
 jdk: openjdk11
 
 install:
-  - jshell build.jsh
-  - source src/build/maven/install.sh
+  - jshell https://bit.ly/bach-jsh
+  - source bin/maven-install.sh
