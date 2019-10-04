@@ -16,5 +16,5 @@ jobs:
         run: source src/build/maven/install.sh
       - name: 'Build again using no-installation Bach.java'
         run: jshell https://bit.ly/bach-jsh
-#      - name: 'Install modules into local Maven repository, again'
-#        run: source bin/maven-install.sh
+      - name: 'Install modules into local Maven repository, again'
+        run: source bin/maven-install.sh
