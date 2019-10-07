@@ -1,4 +1,6 @@
 open module integration {
+  requires de.sormuras.mainrunner.api;
+
   requires programs;
   requires org.junit.jupiter;
   requires org.junit.platform.console;

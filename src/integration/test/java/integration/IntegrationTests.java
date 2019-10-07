@@ -16,6 +16,7 @@
 
 package integration;
 
+import de.sormuras.mainrunner.api.Main;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.discovery.ClassNameFilter;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
@@ -40,6 +41,15 @@ public class IntegrationTests {
   public static class StaticNestedClassProgram {
     public static void main(String[] args) {
       assert args.length == 0;
+    }
+  }
+
+  public static class AnnotatedProgram {
+    @Main // 0
+    @Main("1") // 1
+    @Main({"1", "2"}) // 2
+    public static void main(String[] args) {
+      assert args.length <= 2;
     }
   }
 }
