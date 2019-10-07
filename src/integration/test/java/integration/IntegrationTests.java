@@ -34,7 +34,7 @@ public class IntegrationTests {
         .filters(ClassNameFilter.includeClassNamePatterns(".*Program"))
         .execute()
         .tests()
-        .assertStatistics(stats -> stats.skipped(0).started(7).succeeded(6).aborted(0).failed(1));
+        .assertStatistics(stats -> stats.skipped(0).started(8).succeeded(7).aborted(0).failed(1));
   }
 
   public static class StaticNestedClassProgram {
