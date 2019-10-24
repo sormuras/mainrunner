@@ -34,7 +34,7 @@ public class IntegrationTests {
             DiscoverySelectors.selectModule("programs"))
         .filters(ClassNameFilter.includeClassNamePatterns(".*Program"))
         .execute()
-        .tests()
+        .testEvents()
         .assertStatistics(stats -> stats.skipped(0).started(8).succeeded(7).aborted(0).failed(1));
   }
 
