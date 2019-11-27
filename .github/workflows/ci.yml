@@ -11,6 +11,6 @@ jobs:
         with:
           java-version: 11
       - name: 'Build mainrunner'
-        run: jshell build.jsh
+        run: jshell https://bit.ly/bach-jsh
       - name: 'Install modules into local Maven repository'
-        run: source bin/maven-install.sh
+        run: source .bach/out/maven-install.sh
