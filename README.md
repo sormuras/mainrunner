@@ -1,7 +1,7 @@
 ![mainrunner](mainrunner.png)
 
-[![jdk8](https://img.shields.io/badge/java-8-lightgray.svg)](http://jdk.java.net/8)
-[![jdk11](https://img.shields.io/badge/java-11+-blue.svg)](http://jdk.java.net/11)
+[![jdk8](https://img.shields.io/badge/java-8-lightgray.svg)](https://openjdk.java.net/projects/jdk8)
+[![jdk11](https://img.shields.io/badge/java-11+-blue.svg)](https://openjdk.java.net/projects/jdk/11)
 [![github actions](https://github.com/sormuras/mainrunner/workflows/CI/badge.svg)](https://github.com/sormuras/mainrunner/actions)
 [![experimental](https://img.shields.io/badge/api-experimental-yellow.svg)](https://javadoc.io/doc/de.sormuras.mainrunner/de.sormuras.mainrunner.engine)
 [![central](https://img.shields.io/maven-central/v/de.sormuras.mainrunner/de.sormuras.mainrunner.engine.svg)](https://search.maven.org/search?q=g:de.sormuras.mainrunner%20AND%20a:de.sormuras.mainrunner.*)
