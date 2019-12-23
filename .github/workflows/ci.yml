@@ -13,4 +13,8 @@ jobs:
       - name: 'Build mainrunner'
         run: jshell https://bit.ly/bach-jsh
       - name: 'Install modules into local Maven repository'
-        run: source .bach/out/maven-install.sh
+        run: |
+          BACH="java --module-path .bach/build/lib --module de.sormuras.bach"
+          INSTALL="--batch-mode --no-transfer-progress install:install-file"
+          ${BACH} tool mvn ${INSTALL} @.bach/out/main/deploy/de.sormuras.mainrunner.api/maven-cli-arguments.txt
+          ${BACH} tool mvn ${INSTALL} @.bach/out/main/deploy/de.sormuras.mainrunner.engine/maven-cli-arguments.txt
