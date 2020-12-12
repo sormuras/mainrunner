@@ -1,20 +1,27 @@
 name: CI
-on: push
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
 jobs:
-  linux:
-    name: Linux
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - name: 'Setup JDK 11'
+      - name: 'Check out repository'
+        uses: actions/checkout@v2
+      - name: 'Setup Java'
         uses: actions/setup-java@v1
         with:
-          java-version: 11
-      - name: 'Build mainrunner'
-        run: jshell https://bit.ly/bach-jsh
-      - name: 'Install modules into local Maven repository'
-        run: |
-          BACH="java --module-path .bach/build/lib --module de.sormuras.bach"
-          INSTALL="--batch-mode --no-transfer-progress install:install-file"
-          ${BACH} tool mvn ${INSTALL} @.bach/out/main/deploy/de.sormuras.mainrunner.api/maven-cli-arguments.txt
-          ${BACH} tool mvn ${INSTALL} @.bach/out/main/deploy/de.sormuras.mainrunner.engine/maven-cli-arguments.txt
+          java-version: 16-ea
+      - name: 'Build with Bach'
+        uses: sormuras/bach-build@main
+      - name: 'Upload build artifacts'
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.event.repository.name }}-build-${{ env.VERSION }}
+          path: |
+            .bach/workspace/logbook.md
+            .bach/workspace/modules

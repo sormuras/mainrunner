@@ -6,7 +6,7 @@
 
     <groupId>de.sormuras.mainrunner</groupId>
     <artifactId>de.sormuras.mainrunner.api</artifactId>
-    <version>2.1.6</version>
+    <version>2.2</version>
 
     <name>Mainrunner API</name>
     <description>JUnit Platform Test Engine launching Java programs</description>
