@@ -1,14 +1,26 @@
 name: CI
 
 on:
+
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  build:
+
+  setup:
     runs-on: ubuntu-latest
+    steps:
+      - name: 'Set up version environment variable'
+        run: |
+          SHA7=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION=2.2-ea+${SHA7}
+          echo "VERSION=${VERSION}" >> ${GITHUB_ENV}
+
+  build:
+      needs: [ setup ]
+      runs-on: ubuntu-latest
     steps:
       - name: 'Check out repository'
         uses: actions/checkout@v2
@@ -18,10 +30,33 @@ jobs:
           java-version: 16-ea
       - name: 'Build with Bach'
         uses: sormuras/bach-build@main
+        with:
+          project-version: ${{ env.VERSION }}
+          project-main-jarslug: 'early-access'
       - name: 'Upload build artifacts'
         uses: actions/upload-artifact@v2
         with:
           name: ${{ github.event.repository.name }}-build-${{ env.VERSION }}
           path: |
+            LICENSE
             .bach/workspace/logbook.md
             .bach/workspace/modules
+
+  deploy:
+    needs: [ build ]
+    if: github.event_name == 'push' && github.repository == 'sormuras/mainrunner' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Download build artifact ${{ env.VERSION }}'
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ github.event.repository.name }}-build-${{ env.VERSION }}
+      - name: 'Release early-access build to https://github.com/sormuras/mainrunner/releases/tag/early-access'
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          automatic_release_tag: 'early-access'
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: true
+          title: "Mainrunner ${{ env.VERSION }}"
+          files: |
+            .bach/workspace/modules/*.jar
