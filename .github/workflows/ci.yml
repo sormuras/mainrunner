@@ -51,7 +51,7 @@ jobs:
 
   deploy:
     needs: [ build ]
-    if: false && github.event_name == 'push' && github.repository == 'sormuras/mainrunner' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.repository == 'sormuras/mainrunner' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: 'Download build artifact ${{ needs.setup.outputs.version }}'
@@ -64,6 +64,6 @@ jobs:
           automatic_release_tag: 'early-access'
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: true
-          title: "Mainrunner ${{ needs.setup.outputs.version }}
+          title: 'Mainrunner ${{ needs.setup.outputs.version }}'
           files: |
             .bach/workspace/modules/*.jar
