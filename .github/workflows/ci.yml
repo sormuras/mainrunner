@@ -19,8 +19,8 @@ jobs:
           echo "VERSION=${VERSION}" >> ${GITHUB_ENV}
 
   build:
-      needs: [ setup ]
-      runs-on: ubuntu-latest
+    needs: [ setup ]
+    runs-on: ubuntu-latest
     steps:
       - name: 'Check out repository'
         uses: actions/checkout@v2
