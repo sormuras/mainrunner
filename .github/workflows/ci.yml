@@ -11,19 +11,23 @@ jobs:
 
   setup:
     runs-on: ubuntu-latest
+    outputs:
+      sha7: ${{ steps.version.outputs.sha7 }}
+      sha8: ${{ steps.version.outputs.sha8 }}
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - name: 'Store version strings'
+      - name: 'Compute short version strings'
         id: version
         run: |
           SHA7=$(echo "${{ github.sha }}" | cut -c1-7)
+          SHA8=$(echo "${{ github.sha }}" | cut -c1-8)
           echo "::set-output name=sha7::${SHA7}"
+          echo "::set-output name=sha7::${SHA8}"
           echo "::set-output name=version::2.2-ea+${SHA7}"
 
   build:
     needs: [ setup ]
     runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ jobs.setup.steps.version.outputs.version }}
     steps:
       - name: 'Check out repository'
         uses: actions/checkout@v2
@@ -31,15 +35,15 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 16-ea
-      - name: 'Build with Bach'
+      - name: 'Build Mainrunner ${{ needs.setup.outputs.version }} with Bach'
         uses: sormuras/bach-build@main
         with:
-          project-version: ${{ env.VERSION }}
+          project-version: ${{ needs.setup.outputs.version }}
           project-main-jarslug: 'early-access'
       - name: 'Upload build artifacts'
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ github.event.repository.name }}-build-${{ env.VERSION }}
+          name: ${{ github.event.repository.name }}-build-${{ needs.setup.outputs.version }}
           path: |
             LICENSE
             .bach/workspace/logbook.md
@@ -50,16 +54,16 @@ jobs:
     if: false && github.event_name == 'push' && github.repository == 'sormuras/mainrunner' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: 'Download build artifact ${{ env.VERSION }}'
+      - name: 'Download build artifact ${{ needs.setup.outputs.version }}'
         uses: actions/download-artifact@v2
         with:
-          name: ${{ github.event.repository.name }}-build-${{ env.VERSION }}
+          name: ${{ github.event.repository.name }}-build-${{ needs.setup.outputs.version }}
       - name: 'Release early-access build to https://github.com/sormuras/mainrunner/releases/tag/early-access'
         uses: marvinpinto/action-automatic-releases@latest
         with:
           automatic_release_tag: 'early-access'
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: true
-          title: "Mainrunner ${{ env.VERSION }}"
+          title: "Mainrunner ${{ needs.setup.outputs.version }}
           files: |
             .bach/workspace/modules/*.jar
