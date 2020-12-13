@@ -50,7 +50,7 @@ jobs:
             .bach/workspace/modules
 
   deploy:
-    needs: [ build ]
+    needs: [ setup, build ]
     if: github.event_name == 'push' && github.repository == 'sormuras/mainrunner' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
