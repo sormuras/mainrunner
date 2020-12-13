@@ -23,7 +23,7 @@ jobs:
     needs: [ setup ]
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ steps.version.outputs.version }}
+      VERSION: ${{ jobs.setup.steps.version.outputs.version }}
     steps:
       - name: 'Check out repository'
         uses: actions/checkout@v2
