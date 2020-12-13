@@ -15,7 +15,7 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Set up version environment variable'
+      - name: 'Set up shorter version environment variable'
         run: |
           SHA7=$(echo "${{ github.sha }}" | cut -c1-7)
           VERSION=2.2-ea+${SHA7}
@@ -24,8 +24,6 @@ jobs:
   build:
     needs: [ setup ]
     runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ env.VERSION }}
     steps:
       - name: 'Check out repository'
         uses: actions/checkout@v2
@@ -51,8 +49,6 @@ jobs:
     needs: [ build ]
     if: github.event_name == 'push' && github.repository == 'sormuras/mainrunner' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ env.VERSION }}
     steps:
       - name: 'Download build artifact ${{ env.VERSION }}'
         uses: actions/download-artifact@v2
