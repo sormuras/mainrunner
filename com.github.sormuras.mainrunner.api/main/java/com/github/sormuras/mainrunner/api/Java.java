@@ -1,0 +1,15 @@
+package com.github.sormuras.mainrunner.api;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Java {
+
+  String[] options() default {};
+
+  int expectedExitValue() default 0;
+}
