@@ -16,8 +16,6 @@ import com.github.sormuras.bach.project.ProjectInfo.Tweak;
       @Tweak(tool = "javadoc", with = {"-windowtitle", "🦄 Mainrunner"}),
       @Tweak(tool = "javadoc", with = {"-header", "🦄 Mainrunner"}),
       @Tweak(tool = "javadoc", with = {"-overview", ".bach/api-overview.html"}),
-      @Tweak(tool = "javadoc", with = "-use"),
-      @Tweak(tool = "javadoc", with = "-linksource"),
       @Tweak(tool = "javadoc", with = "-notimestamp")
     }
 )
