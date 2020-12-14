@@ -1,5 +1,6 @@
 import com.github.sormuras.bach.project.Feature;
 import com.github.sormuras.bach.project.ProjectInfo;
+import com.github.sormuras.bach.project.ProjectInfo.Tweak;
 
 @ProjectInfo(
     version = "2.2-ea",
