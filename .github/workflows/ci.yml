@@ -47,6 +47,7 @@ jobs:
           path: |
             LICENSE
             .bach/workspace/logbook.md
+            .bach/workspace/documentation/api
             .bach/workspace/modules
 
   deploy:
