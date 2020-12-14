@@ -85,10 +85,17 @@ jobs:
       - name: 'Sync Early-Access API documentation'
         run: |
           mkdir --parents api/early-access
-          rsync -zavh .bach/workspace/documentation/api api/early-access
-          ls -la api/early-access
+          rsync --archive .bach/workspace/documentation/api/ api/early-access
       - name: 'Check for modifications'
         id: diff
         run: |
           git diff
           echo ::set-output name=modified::$(if git diff-index --quiet HEAD --; then echo 'false'; else echo 'true'; fi)
+      - name: 'Commit and push changes'
+        if: steps.diff.outputs.modified == 'true'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit --message 'Update pages'
+          git push
