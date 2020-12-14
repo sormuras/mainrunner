@@ -9,7 +9,16 @@ import com.github.sormuras.bach.project.ProjectInfo;
       "com.github.sormuras.mainrunner.engine/main/java-module/module-info.java"
     },
     features = Feature.GENERATE_API_DOCUMENTATION,
-    tests = {"test.integration/test/java/module-info.java", "test.programs/test/java/module-info.java"})
+    tests = {"test.integration/test/java/module-info.java", "test.programs/test/java/module-info.java"},
+    tweaks = {
+      @Tweak(tool = "javadoc", with = {"-encoding", "UTF-8"}),
+      @Tweak(tool = "javadoc", with = {"-windowtitle", "🦄 Mainrunner"}),
+      @Tweak(tool = "javadoc", with = {"-header", "🦄 Mainrunner"}),
+      @Tweak(tool = "javadoc", with = "-use"),
+      @Tweak(tool = "javadoc", with = "-linksource"),
+      @Tweak(tool = "javadoc", with = "-notimestamp")
+    }
+)
 module build {
   requires com.github.sormuras.bach;
 }
