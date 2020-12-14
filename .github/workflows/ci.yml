@@ -68,3 +68,25 @@ jobs:
           title: 'Mainrunner ${{ needs.setup.outputs.version }}'
           files: |
             .bach/workspace/modules/*.jar
+
+  pages:
+    needs: [ setup, build ]
+    if: github.event_name == 'push' && github.repository == 'sormuras/mainrunner' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Check out pages branch'
+        uses: actions/checkout@v2
+        with:
+          ref: pages
+      - name: 'Download build artifact ${{ needs.setup.outputs.version }}'
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ github.event.repository.name }}-build-${{ needs.setup.outputs.version }}
+      - name: 'Sync Early-Access API documentation'
+        run: rsync -a --delete .bach/workspace/documentation/api api/early-access
+      - name: 'Check for modifications'
+        id: diff
+        run: |
+          git diff
+          echo ::set-output name=modified::$(if git diff-index --quiet HEAD --; then echo 'false'; else echo 'true'; fi)
+
