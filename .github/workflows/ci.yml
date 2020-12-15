@@ -60,7 +60,6 @@ jobs:
         with:
           name: ${{ github.event.repository.name }}-build-${{ needs.setup.outputs.version }}
       - name: 'Release early-access build to https://github.com/sormuras/mainrunner/releases/tag/early-access'
-        if: 1 == 2
         uses: marvinpinto/action-automatic-releases@latest
         with:
           automatic_release_tag: 'early-access'
