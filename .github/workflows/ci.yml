@@ -83,11 +83,14 @@ jobs:
         with:
           name: ${{ github.event.repository.name }}-build-${{ needs.setup.outputs.version }}
       - name: 'Sync early-access documentation'
-        run: rsync --archive --delete --verbose .bach/workspace/documentation/api/ mainrunner/early-access
+        run: |
+          mkdir --parents mainrunner/early-access
+          rsync --archive --delete --verbose .bach/workspace/documentation/api/ mainrunner/early-access
       - name: 'Check for modifications'
         id: diff
         run: |
           git diff
+          git status
           echo ::set-output name=modified::$(if git diff-index --quiet HEAD --; then echo 'false'; else echo 'true'; fi)
       - name: 'Commit and push changes'
         if: steps.diff.outputs.modified == 'true'
