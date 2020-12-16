@@ -78,6 +78,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: sormuras/api
+          token: ${{ secrets.PAT }}
       - name: 'Download build artifact ${{ needs.setup.outputs.version }}'
         uses: actions/download-artifact@v2
         with:
