@@ -1,8 +1,0 @@
-jdk: openjdk11
-
-install:
-  - jshell https://bit.ly/bach-jsh
-  - BACH="java --module-path .bach/build/lib --module de.sormuras.bach"
-  - INSTALL="--batch-mode --no-transfer-progress install:install-file"
-  - ${BACH} tool mvn ${INSTALL} @.bach/out/main/deploy/de.sormuras.mainrunner.api/maven-cli-arguments.txt
-  - ${BACH} tool mvn ${INSTALL} @.bach/out/main/deploy/de.sormuras.mainrunner.engine/maven-cli-arguments.txt
