@@ -36,8 +36,9 @@ jobs:
         with:
           java-version: 16-ea
       - name: 'Build Mainrunner ${{ needs.setup.outputs.version }} with Bach'
-        uses: sormuras/bach-build@main
+        uses: sormuras/bach-build@v1
         with:
+          bach-version: 16
           project-version: ${{ needs.setup.outputs.version }}
           project-main-jarslug: 'early-access'
       - name: 'Upload build artifacts'
