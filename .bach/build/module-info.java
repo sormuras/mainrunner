@@ -1,5 +1,6 @@
 import com.github.sormuras.bach.project.Feature;
 import com.github.sormuras.bach.project.ProjectInfo;
+import com.github.sormuras.bach.project.ProjectInfo.Link;
 import com.github.sormuras.bach.project.ProjectInfo.Tweak;
 
 @ProjectInfo(
@@ -10,7 +11,11 @@ import com.github.sormuras.bach.project.ProjectInfo.Tweak;
       "com.github.sormuras.mainrunner.engine/main/java-module/module-info.java"
     },
     features = Feature.GENERATE_API_DOCUMENTATION,
-    tests = {"test.integration/test/java/module-info.java", "test.programs/test/java/module-info.java"},
+    tests = {
+      "test.integration/test/java/module-info.java",
+      "test.programs/test/java/module-info.java"
+    },
+    links = {@Link(module = "org.assertj.core", to = "org.assertj:assertj-core:3.19.0")},
     tweaks = {
       @Tweak(tool = "javadoc", with = {"-encoding", "UTF-8"}),
       @Tweak(tool = "javadoc", with = {"-windowtitle", "🦄 Mainrunner"}),
