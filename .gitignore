@@ -1,13 +1,4 @@
-# Folders
 .bach/workspace/
-.gradle/
 .idea/
-.settings/
-bin/
-target/
 
-# Files
-.classpath
-.project
-*.iml
 *.jar
