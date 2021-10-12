@@ -1,11 +1,11 @@
 package test.integration;
 
-import com.github.sormuras.mainrunner.api.Main;
+import com.github.sormuras.mainrunner.api.Run;
 
 public class AnnotatedProgram {
-  @Main
-  @Main("a")
-  @Main({"a", "b"})
-  @Main({"a", "b", "c"})
+  @Run
+  @Run("a")
+  @Run({"a", "b"})
+  @Run({"a", "b", "c"})
   public static void main(String[] args) {}
 }

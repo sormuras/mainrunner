@@ -8,8 +8,8 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-@Repeatable(MainRepeatable.class)
-public @interface Main {
+@Repeatable(RunRepeatable.class)
+public @interface Run {
 
   /**
    * Argument array to be passed to the test run.

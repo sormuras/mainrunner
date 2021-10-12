@@ -1,18 +1,15 @@
 package com.github.sormuras.mainrunner.engine;
 
-import com.github.sormuras.mainrunner.api.Main;
+import com.github.sormuras.mainrunner.api.Run;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
-
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
 
 public class Mainrunner extends AbstractClassBasedTestEngine {
-
-  private final Overlay overlay = OverlaySingleton.INSTANCE;
 
   @Override
   public String getId() {
@@ -21,7 +18,16 @@ public class Mainrunner extends AbstractClassBasedTestEngine {
 
   @Override
   public String createEngineDisplayName() {
-    return overlay.display();
+    var module = getClass().getModule();
+    var descriptor = module.getDescriptor();
+    return "Mainrunner (" + (descriptor != null ? descriptor.toNameAndVersion() : module) + ")";
+  }
+
+  @Override
+  public String createTestClassDisplayName(Class<?> testClass) {
+    var name = testClass.getCanonicalName();
+    var module = testClass.getModule();
+    return module.isNamed() ? module.getName() + "/" + name : name;
   }
 
   @Override
@@ -52,19 +58,18 @@ public class Mainrunner extends AbstractClassBasedTestEngine {
 
   @Override
   public Stream<UnaryOperator<TestDescriptor>> createTestMethods(Method method) {
-    try {
-      Class.forName("de.sormuras.mainrunner.api.Main");
-    } catch (ClassNotFoundException e) {
+    var layer = Mainrunner.class.getModule().getLayer();
+    if (layer.findModule("com.github.sormuras.mainrunner.api").isEmpty()) {
       return super.createTestMethods(method);
     }
-    Main[] mains = method.getDeclaredAnnotationsByType(Main.class);
+    Run[] mains = method.getDeclaredAnnotationsByType(Run.class);
     if (mains.length == 0) {
       return super.createTestMethods(method);
     }
     return Arrays.stream(mains).map(main -> (parent -> newTestMethod(parent, method, main)));
   }
 
-  private TestDescriptor newTestMethod(TestDescriptor parent, Method method, Main main) {
+  private TestDescriptor newTestMethod(TestDescriptor parent, Method method, Run main) {
     UniqueId testId = parent.getUniqueId().append("method", method.getName() + main.hashCode());
     Object[] args = new Object[] {main.value()};
     return new TestMethod(testId, displayName(main), method, args);
@@ -75,7 +80,7 @@ public class Mainrunner extends AbstractClassBasedTestEngine {
     return null; // all "main" methods are static, no instance needed
   }
 
-  private static String displayName(Main main) {
+  private static String displayName(Run main) {
     String displayName = main.displayName();
     String args = main.value().length > 0 ? '"' + String.join("\", \"", main.value()) + '"' : "";
     if (displayName.length() > 0) {

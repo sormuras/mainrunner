@@ -1,5 +1,6 @@
 open module test.integration {
   requires com.github.sormuras.mainrunner.api;
+  requires com.github.sormuras.mainrunner.engine;
 
   requires org.junit.jupiter;
   requires org.junit.platform.console;

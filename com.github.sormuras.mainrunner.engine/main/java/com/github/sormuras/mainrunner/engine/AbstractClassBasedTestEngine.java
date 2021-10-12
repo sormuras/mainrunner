@@ -14,7 +14,6 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
-
 import org.junit.platform.commons.support.HierarchyTraversalMode;
 import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.platform.engine.EngineDiscoveryRequest;
@@ -78,12 +77,15 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
       if (!isTestMethod(method)) {
         return Resolution.unresolved();
       }
-      Set<Match> matches = createTestMethods(method)
-              .map(descriptorCreator -> context
-                      .addToParent(
+      Set<Match> matches =
+          createTestMethods(method)
+              .map(
+                  descriptorCreator ->
+                      context
+                          .addToParent(
                               () -> selectClass(selector.getJavaClass()),
                               parent -> Optional.of(descriptorCreator.apply(parent)))
-                      .orElseThrow(Error::new))
+                          .orElseThrow(Error::new))
               .map(Match::exact)
               .collect(toSet());
       return Resolution.matches(matches);
@@ -189,12 +191,13 @@ public abstract class AbstractClassBasedTestEngine implements TestEngine {
   }
 
   public Stream<UnaryOperator<TestDescriptor>> createTestMethods(Method method) {
-    return Stream.of(parent -> {
-      UniqueId testId = parent.getUniqueId().append("method", method.getName());
-      String testDisplayName = createTestMethodDisplayName(method);
-      Object[] testArguments = createTestArguments(method);
-      return new TestMethod(testId, testDisplayName, method, testArguments);
-    });
+    return Stream.of(
+        parent -> {
+          UniqueId testId = parent.getUniqueId().append("method", method.getName());
+          String testDisplayName = createTestMethodDisplayName(method);
+          Object[] testArguments = createTestArguments(method);
+          return new TestMethod(testId, testDisplayName, method, testArguments);
+        });
   }
 
   public Object createTestInstance(Class<?> testClass) {
