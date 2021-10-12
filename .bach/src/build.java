@@ -5,21 +5,6 @@ import com.github.sormuras.bach.simple.SimpleSpace;
 class build {
   public static void main(String... args) {
     try (var bach = new Bach(args)) {
-      bach.logCaption("Compile main modules");
-      var main =
-          SimpleSpace.of(bach, "main")
-              .withModule("com.github.sormuras.mainrunner.api")
-              .withModule("com.github.sormuras.mainrunner.engine");
-      var options = bach.configuration().projectOptions();
-
-      main.compile(
-          javac -> javac.add("-Xlint").add("-Werror").add("--release", 17),
-          jar ->
-              jar.verbose(true)
-                  .add(
-                      "--module-version",
-                      options.version().map(Object::toString).orElse("2.2-ea")));
-
       bach.logCaption("Download external 3rd-party modules");
       var grabber = bach.grabber(JUnit.version("5.8.1"), build::locateExternalModule);
       grabber.grabExternalModules(
@@ -38,6 +23,21 @@ class build {
           "org.junit.platform.reporting",
           "org.junit.platform.testkit",
           "org.opentest4j");
+
+      bach.logCaption("Compile main modules");
+      var main =
+          SimpleSpace.of(bach, "main")
+              .withModule("com.github.sormuras.mainrunner.api")
+              .withModule("com.github.sormuras.mainrunner.engine");
+      var options = bach.configuration().projectOptions();
+
+      main.compile(
+          javac -> javac.add("-Xlint").add("-Werror").add("--release", 17),
+          jar ->
+              jar.verbose(true)
+                  .add(
+                      "--module-version",
+                      options.version().map(Object::toString).orElse("2.2-ea")));
 
       bach.logCaption("Perform automated checks");
       var test =
