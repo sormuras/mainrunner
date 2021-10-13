@@ -1,57 +1,79 @@
 import com.github.sormuras.bach.Bach;
+import com.github.sormuras.bach.ExternalModuleLocator;
+import com.github.sormuras.bach.Project;
+import com.github.sormuras.bach.command.JavacCommand;
 import com.github.sormuras.bach.external.JUnit;
-import com.github.sormuras.bach.simple.SimpleSpace;
+import com.github.sormuras.bach.external.Maven;
+import com.github.sormuras.bach.workflow.CompileWorkflow;
+import com.github.sormuras.bach.workflow.WorkflowRunner;
+import java.lang.module.ModuleDescriptor;
+import java.nio.file.Path;
+import java.util.Set;
 
 class build {
+
+  static final String JUNIT_VERSION = "5.8.1";
+  static final String ASSERTJ_VERSION = "3.21.0";
+
   public static void main(String... args) {
     try (var bach = new Bach(args)) {
-      bach.logCaption("Download external 3rd-party modules");
-      var grabber = bach.grabber(JUnit.version("5.8.1"), build::locateExternalModule);
-      grabber.grabExternalModules(
-          // JUnit Jupiter
-          "org.junit.jupiter",
-          "org.junit.jupiter.api",
-          "org.junit.jupiter.engine",
-          "org.junit.jupiter.params",
-          // JUnit Platform and friends
-          "org.apiguardian.api",
-          "org.assertj.core",
-          "org.junit.platform.commons",
-          "org.junit.platform.console",
-          "org.junit.platform.engine",
-          "org.junit.platform.launcher",
-          "org.junit.platform.reporting",
-          "org.junit.platform.testkit",
-          "org.opentest4j");
-
-      bach.logCaption("Compile main modules");
-      var main =
-          SimpleSpace.of(bach, "main")
-              .withModule("com.github.sormuras.mainrunner.api")
-              .withModule("com.github.sormuras.mainrunner.engine");
-      var options = bach.configuration().projectOptions();
-
-      main.compile(
-          javac -> javac.add("-Xlint").add("-Werror").add("--release", 17),
-          jar ->
-              jar.verbose(true)
-                  .add(
-                      "--module-version",
-                      options.version().map(Object::toString).orElse("2.2-ea")));
-
-      bach.logCaption("Perform automated checks");
-      var test =
-          main.newDependentSpace("test").withModule("test.integration").withModule("test.programs");
-
-      test.compile(javac -> javac.add("-g").add("-parameters").add("-encoding", "UTF-8"));
-      test.runAllTests();
+      var project = project(bach);
+      bach.logMessage("Build project %s".formatted(project.toNameAndVersion()));
+      var runner = new WorkflowRunner(bach, project);
+      runner.grabExternals();
+      runner.run(
+          new CompileWorkflow(bach, project, project.space("main")) {
+            @Override
+            protected JavacCommand computeJavacCommand(Path classes) {
+              return super.computeJavacCommand(classes).add("-Xlint").add("-Werror");
+            }
+          },
+          new CompileWorkflow(bach, project, project.space("test")) {
+            @Override
+            protected JavacCommand computeJavacCommand(Path classes) {
+              return super.computeJavacCommand(classes).add("-encoding", "UTF-8");
+            }
+          });
+      runner.executeTests();
     }
   }
 
-  static String locateExternalModule(String module) {
-    return switch (module) {
-      case "org.assertj.core" -> "https://repo.maven.apache.org/maven2/org/assertj/assertj-core/3.21.0/assertj-core-3.21.0.jar";
-      default -> null;
-    };
+  static Project project(Bach bach) {
+    return Project.of(
+            "mainrunner",
+            bach.configuration()
+                .projectOptions()
+                .version()
+                .orElse(ModuleDescriptor.Version.parse("2.2-ea")))
+        .withSpaces(
+            spaces ->
+                spaces
+                    .withSpace(
+                        "main",
+                        main ->
+                            main.withRelease(17)
+                                .withModule("com.github.sormuras.mainrunner.api/main/java")
+                                .withModule("com.github.sormuras.mainrunner.engine/main/java"))
+                    .withSpace(
+                        "test",
+                        Set.of("main"),
+                        test ->
+                            test.withModule("test.integration/test/java")
+                                .withModule("test.programs/test/java")))
+        .withExternals(
+            externals ->
+                externals
+                    .withExternalModuleLocator(JUnit.version(JUNIT_VERSION))
+                    .withExternalModuleLocator(
+                        new ExternalModule(
+                            "org.assertj.core",
+                            Maven.central("org.assertj", "assertj-core", ASSERTJ_VERSION))));
+  }
+
+  record ExternalModule(String module, String url) implements ExternalModuleLocator {
+    @Override
+    public String locate(String module) {
+      return module().equals(module) ? url : null;
+    }
   }
 }
