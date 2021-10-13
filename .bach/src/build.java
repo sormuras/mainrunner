@@ -1,5 +1,4 @@
 import com.github.sormuras.bach.Bach;
-import com.github.sormuras.bach.ExternalModuleLocator;
 import com.github.sormuras.bach.Project;
 import com.github.sormuras.bach.command.JavacCommand;
 import com.github.sormuras.bach.external.JUnit;
@@ -64,16 +63,8 @@ class build {
             externals ->
                 externals
                     .withExternalModuleLocator(JUnit.version(JUNIT_VERSION))
-                    .withExternalModuleLocator(
-                        new ExternalModule(
-                            "org.assertj.core",
-                            Maven.central("org.assertj", "assertj-core", ASSERTJ_VERSION))));
-  }
-
-  record ExternalModule(String module, String url) implements ExternalModuleLocator {
-    @Override
-    public String locate(String module) {
-      return module().equals(module) ? url : null;
-    }
+                    .withExternalModuleUri(
+                        "org.assertj.core",
+                        Maven.central("org.assertj", "assertj-core", ASSERTJ_VERSION)));
   }
 }
