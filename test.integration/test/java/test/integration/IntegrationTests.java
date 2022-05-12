@@ -20,7 +20,7 @@ public class IntegrationTests {
         .filters(ClassNameFilter.includeClassNamePatterns(".*Program"))
         .execute()
         .testEvents()
-        .assertStatistics(stats -> stats.skipped(0).started(11).succeeded(10).aborted(0).failed(1));
+        .assertStatistics(stats -> stats.skipped(0).started(12).succeeded(11).aborted(0).failed(1));
   }
 
   public static class StaticNestedClassProgram {
