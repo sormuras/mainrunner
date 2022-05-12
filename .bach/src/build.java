@@ -52,7 +52,11 @@ class build {
                         main ->
                             main.withRelease(17)
                                 .withModule("com.github.sormuras.mainrunner.api/main/java")
-                                .withModule("com.github.sormuras.mainrunner.engine/main/java"))
+                                .withModule(
+                                    "com.github.sormuras.mainrunner.engine/main/java",
+                                    engine ->
+                                        engine.withResourcesFolder(
+                                            "com.github.sormuras.mainrunner.engine/main/resources")))
                     .withSpace(
                         "test",
                         Set.of("main"),
